@@ -474,7 +474,7 @@ svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-even
 .stack-card h3 i { width: 10px; height: 10px; border-radius: 3px; background: var(--sw); box-shadow: 0 0 14px var(--sw); }
 
 .footer { padding-block: 4rem 3rem; border-top: 1px solid var(--border); color: var(--faint); font-size: .88rem; }
-.footer .container { display: flex; flex-wrap: wrap; gap: 1rem 2rem; justify-content: space-between; align-items: center; }
+.footer .container { display: flex; flex-wrap: wrap; gap: 1rem 2rem; justify-content: center; align-items: center; text-align: center; }
 .footer a { color: var(--soft); border-bottom: 1px solid var(--border-2); }
 .footer a:hover { border-color: var(--soft); }
 
@@ -1809,21 +1809,33 @@ const pIndex = Object.fromEntries(SEQ.parts.map((p, i) => [p.id, i]));
 const pX = id => 60 + pIndex[id] * PX;
 function drawSeq() {
   const n = SEQ.msgs.length;
-  const W = 60 + (SEQ.parts.length - 1) * PX + 60, H = TOP + HEADH + 30 + n * ROW + 30;
+  // posição vertical de cada mensagem, com folga para o cabeçalho do alt e a divisória
+  const firstAlt = SEQ.msgs.findIndex(m => m.alt), firstLast = SEQ.msgs.findIndex(m => m.alt === "last");
+  const lastAlt = SEQ.msgs.map(m => !!m.alt).lastIndexOf(true);
+  const Y = []; let yy = TOP + HEADH + 34;
+  SEQ.msgs.forEach((m, i) => {
+    if (i > 0) yy += ROW;
+    if (i === firstAlt) yy += 40;
+    if (i === firstLast) yy += 34;
+    if (i === lastAlt + 1) yy += 26;
+    Y.push(yy);
+  });
+  SQ.Y = Y;
+  const W = 60 + (SEQ.parts.length - 1) * PX + 60, H = Y[n - 1] + 44;
   seqSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   let s = `<defs>
-    <marker id="sqA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#DCCFD2"/></marker>
-    <marker id="sqO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#DCCFD2" stroke-width="1.6"/></marker>
-    <marker id="sqY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#E3B341" stroke-width="1.6"/></marker>
+    <marker id="sqA" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#DCCFD2"/></marker>
+    <marker id="sqO" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#DCCFD2" stroke-width="1.6"/></marker>
+    <marker id="sqY" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#E3B341" stroke-width="1.6"/></marker>
   </defs>`;
   const y0 = TOP + HEADH + 30;
   // caixa alt
   const altIdx = SEQ.msgs.map((m, i) => m.alt ? i : -1).filter(i => i >= 0);
   if (altIdx.length) {
     const a = altIdx[0], b = altIdx[altIdx.length - 1];
-    const ya = y0 + a * ROW - 20, yb = y0 + b * ROW + 22;
-    const pendEnd = SEQ.msgs.findIndex(m => m.alt === "last");
-    const ysplit = y0 + pendEnd * ROW - 22;
+    const ya = Y[a] - 52, yb = Y[b] + 24;
+    const pendEnd = firstLast;
+    const ysplit = Y[pendEnd] - 50;
     s += `<rect x="${pX("SPA") - 34}" y="${ya}" width="${pX("TEL") - pX("SPA") - 40}" height="${yb - ya}" rx="10" fill="rgba(217,165,173,.05)" stroke="#D9A5AD" stroke-opacity=".5" stroke-dasharray="4 4"/>
       <rect x="${pX("SPA") - 34}" y="${ya}" width="34" height="18" rx="6" fill="#D9A5AD" fill-opacity=".25"/><text x="${pX("SPA") - 17}" y="${ya + 13}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#F5E1E4">alt</text>
       <text x="${pX("SPA") + 6}" y="${ya + 13}" font-family="Inter, sans-serif" font-size="10.5" fill="#E6B8C0">[ainda falta árbitro]</text>
@@ -1842,7 +1854,7 @@ function drawSeq() {
   });
   // mensagens
   SEQ.msgs.forEach((m, i) => {
-    const y = y0 + i * ROW, x1 = pX(m.f), x2 = pX(m.t);
+    const y = Y[i], x1 = pX(m.f), x2 = pX(m.t);
     const col = m.k === "async" ? "#E3B341" : "rgba(255,240,242,.55)";
     const dash = m.k === "reply" ? ' stroke-dasharray="5 4"' : m.k === "async" ? ' stroke-dasharray="7 3"' : "";
     const mk = m.k === "sync" || m.k === "self" ? "sqA" : m.k === "async" ? "sqY" : "sqO";
@@ -1862,7 +1874,7 @@ function drawSeq() {
       ${line}
       <circle class="num-c" cx="${m.k === "self" ? x1 - 16 : nx + 6}" cy="${y}" r="9" fill="#3D161C" stroke="rgba(255,240,242,.25)"/>
       <text x="${m.k === "self" ? x1 - 16 : nx + 6}" y="${y + 3.5}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#F5E1E4">${i + 1}</text>
-      <text x="${tx}" y="${ty}" text-anchor="${anchor}" font-family="Inter, sans-serif" font-size="11" fill="rgba(243,244,246,.75)">${esc(m.txt)}</text>
+      <text x="${tx}" y="${ty}" text-anchor="${anchor}" font-family="Inter, sans-serif" font-size="11" fill="rgba(243,244,246,.78)" paint-order="stroke" stroke="#111014" stroke-width="5" stroke-linejoin="round">${esc(m.txt)}</text>
     </g>`;
   });
   s += `<circle id="sqDot" r="5" fill="#E08896" opacity="0" style="filter: drop-shadow(0 0 6px #E08896)"/>`;
@@ -1894,7 +1906,7 @@ function setStep(k) {
   // ponto viajando na seta
   const dot = $("#sqDot"); cancelAnimationFrame(dotAnim);
   if (reduce || !dot) return;
-  const y = 20 + HEADH + 30 + cur * ROW, x1 = pX(m.f), x2 = m.f === m.t ? pX(m.f) + 46 : pX(m.t);
+  const y = SQ.Y[cur], x1 = pX(m.f), x2 = m.f === m.t ? pX(m.f) + 46 : pX(m.t);
   dot.setAttribute("fill", m.k === "async" ? "#E3B341" : "#E08896");
   const t0 = performance.now();
   const tick = now => {
