@@ -3,608 +3,777 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SISJOGOS C4 Model</title>
-<meta name="description" content="Arquitetura do SISJOGOS (Jogos Bom de Ginga 2026) no padrão C4 Model: contexto, containers e componentes, em um diagrama interativo.">
-<meta name="theme-color" content="#0b0a0c">
+<title>SISJOGOS · Arquitetura C4</title>
+<meta name="description" content="Arquitetura do SISJOGOS (Jogos Bom de Ginga 2026) no C4 Model: contexto, containers, componentes, modelo de dados e fluxo crítico, em uma página interativa.">
+<meta name="theme-color" content="#0B1D30">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: barra fixa com os 3 níveis, palco do diagrama com zoom e arraste, painel lateral de detalhes, bento com stack e decisões.
-   Cores: tons C4 do board do Miro (pessoa, sistema, container, componente, externo) sobre um escuro neutro levemente puxado para o vinho do grupo. */
+/* Mesmo sistema visual do portfolio-site: azul-marinho, azul primário, vidro com brilho que segue o mouse.
+   Os elementos do C4 usam a família de azuis do board do Miro; o modelo de dados usa as cores por área do Miro. */
 :root {
-  --bg: #0b0a0c;
-  --bg-elev: #131114;
-  --bg-elev-2: #1a171b;
-  --glass: rgba(24, 21, 25, 0.72);
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
-  --fg: #f3eff1;
-  --fg-2: #aba3a8;
-  --fg-3: #756d72;
-  --wine: #9b3f4b;
-  --wine-fg: #ec8f9b;
-  --wine-soft: rgba(155, 63, 75, 0.2);
-  --in-fg: #79b6f2;
-  --edge: rgba(236, 228, 232, 0.34);
-  --edge-opt: rgba(236, 228, 232, 0.22);
-  --dot: rgba(255, 255, 255, 0.055);
-  --shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 32px -12px rgba(0,0,0,0.6);
-  --shadow-lg: 0 24px 64px -16px rgba(0,0,0,0.7);
-  --tint: 15%;
-  --tint-border: 40%;
-  --mix-fg: #ffffff;
-  --mix-fg-amt: 52%;
+  --bg: #0B1D30; --bg-2: #08172A; --deep: #163A5F;
+  --primary: #2563EB; --primary-hi: #3B82F6; --soft: #DBEAFE; --white: #FFFFFF; --text: #F3F4F6;
+  --muted: rgba(243, 244, 246, 0.68); --faint: rgba(243, 244, 246, 0.45);
+  --surface: rgba(22, 58, 95, 0.42); --surface-2: rgba(22, 58, 95, 0.62); --solid: #0F2741; --solid-2: #12304F;
+  --border: rgba(219, 234, 254, 0.09); --border-2: rgba(219, 234, 254, 0.16); --border-3: rgba(219, 234, 254, 0.28);
+  --glow: rgba(37, 99, 235, 0.45);
+  --success: #16A34A; --success-hi: #4ADE80; --warn: #F59E0B; --warn-hi: #FCD34D;
+  --out: #60A5FA; --in: #FBBF24;
+  --edge: rgba(219, 234, 254, 0.34); --edge-opt: rgba(219, 234, 254, 0.2);
 
-  /* Tons C4 do board do Miro */
-  --c-person: #08427b;
-  --c-system: #1168bd;
-  --c-container: #438dd5;
-  --c-component: #85bbf0;
-  --c-external: #8a8a8a;
+  --c-person: #1D5FA8; --c-system: #2563EB; --c-container: #438DD5; --c-component: #85BBF0; --c-external: #8A94A6;
 
-  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --r-sm: 8px;
-  --r-md: 14px;
-  --r-lg: 22px;
+  --grad-text: linear-gradient(100deg, #FFFFFF 0%, var(--soft) 35%, #93B4F8 65%, var(--primary-hi) 100%);
+  --f-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --fs-hero: clamp(2.4rem, 1.1rem + 5vw, 5.2rem);
+  --fs-h2: clamp(2rem, 1.1rem + 3.2vw, 3.6rem);
+  --fs-lead: clamp(1.05rem, 0.95rem + 0.45vw, 1.25rem);
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2rem);
+  --section-y: clamp(4.5rem, 3rem + 6vw, 8.5rem);
+  --radius-sm: 10px; --radius: 18px; --radius-lg: 28px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow: 0 30px 80px -20px rgba(2, 8, 20, 0.7);
   color-scheme: dark;
 }
-:root[data-theme="light"] {
-  --bg: #f6f4f5;
-  --bg-elev: #ffffff;
-  --bg-elev-2: #f1eef0;
-  --glass: rgba(255, 255, 255, 0.78);
-  --line: rgba(20, 10, 15, 0.09);
-  --line-strong: rgba(20, 10, 15, 0.18);
-  --fg: #17121a;
-  --fg-2: #5c5359;
-  --fg-3: #8d848a;
-  --wine: #8e3742;
-  --wine-fg: #8e3742;
-  --wine-soft: rgba(142, 55, 66, 0.1);
-  --in-fg: #1168bd;
-  --edge: rgba(30, 20, 26, 0.38);
-  --edge-opt: rgba(30, 20, 26, 0.24);
-  --dot: rgba(20, 10, 15, 0.07);
-  --shadow: 0 1px 2px rgba(20,10,15,0.05), 0 10px 28px -14px rgba(20,10,15,0.22);
-  --shadow-lg: 0 24px 60px -20px rgba(20,10,15,0.3);
-  --tint: 9%;
-  --tint-border: 34%;
-  --mix-fg: #000000;
-  --mix-fg-amt: 28%;
-  color-scheme: light;
-}
-
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-body); font-size: 1rem; line-height: 1.6;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
-body::before {
-  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
-  z-index: 60; background: var(--bg);
-}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 130; background: var(--bg); }
+h1, h2, h3, h4 { font-family: var(--f-display); margin: 0; color: var(--white); }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 [hidden] { display: none !important; }
-button { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--wine-fg); outline-offset: 2px; }
-.wrap {
-  max-width: 1360px; margin: 0 auto;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
+:focus-visible { outline: 2px solid var(--primary-hi); outline-offset: 3px; border-radius: 6px; }
+::selection { background: rgba(37, 99, 235, .45); color: #fff; }
+.container {
+  width: 100%; max-width: 1240px; margin-inline: auto;
+  padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
 }
-.mono { font-family: var(--font-mono); }
+.mono { font-family: var(--f-mono); }
+.text-gradient { background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-/* ---------- Barra superior ---------- */
-.topbar {
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
-  background: var(--glass);
-  backdrop-filter: saturate(160%) blur(18px);
-  -webkit-backdrop-filter: saturate(160%) blur(18px);
-  border-bottom: 1px solid var(--line);
-}
-.topbar .wrap {
-  display: flex; align-items: center; gap: 16px; min-height: 60px; padding-block: 10px; flex-wrap: wrap;
-}
-.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--fg); margin-right: auto; min-width: 0; }
-.brand svg { flex: none; }
-.brand b { font-weight: 650; letter-spacing: -0.01em; }
-.brand span { color: var(--fg-3); font-size: 13px; white-space: nowrap; }
-.levels {
-  position: relative; display: flex; padding: 4px; gap: 2px;
-  background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 999px;
-}
-.levels .pill {
-  position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 999px;
-  background: var(--bg-elev); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
-  transition: left .35s cubic-bezier(.3,.8,.2,1), width .35s cubic-bezier(.3,.8,.2,1);
-}
-.levels button {
-  position: relative; z-index: 1; border: 0; background: none; cursor: pointer;
-  padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 550; color: var(--fg-2);
-  display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: color .2s;
-}
-.levels button[aria-selected="true"] { color: var(--fg); }
-.levels button .n {
-  font-family: var(--font-mono); font-size: 11px; width: 18px; height: 18px; border-radius: 6px;
-  display: grid; place-items: center; background: var(--line); color: var(--fg-2);
-}
-.levels button[aria-selected="true"] .n { background: var(--wine); color: #fff; }
-.icon-btn {
-  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-elev);
-  display: grid; place-items: center; cursor: pointer; color: var(--fg-2); transition: color .2s, border-color .2s, background .2s;
-}
-.icon-btn:hover { color: var(--fg); border-color: var(--line-strong); }
+/* ---------- Progresso de rolagem ---------- */
+.scroll-progress { position: fixed; inset: 0 0 auto 0; height: 2px; z-index: 140; pointer-events: none; }
+.scroll-progress span { display: block; height: 100%; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, var(--primary), var(--soft)); }
 
-/* ---------- Cabeçalho do nível ---------- */
-.intro { padding-block: 40px 20px; display: grid; gap: 14px; }
-.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-3); }
-.crumbs button { border: 0; background: none; padding: 2px 6px; border-radius: 6px; cursor: pointer; color: var(--fg-2); }
-.crumbs button:hover { background: var(--line); color: var(--fg); }
-.crumbs .cur { color: var(--fg); padding: 2px 6px; }
-.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--wine-fg); }
-.intro h1 {
-  margin: 0; font-size: clamp(30px, 4.6vw, 52px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 700;
-  text-wrap: balance;
+/* ---------- Componentes ---------- */
+.btn {
+  --h: 48px; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  height: var(--h); padding: 0 1.3rem; border-radius: 999px; white-space: nowrap;
+  font-family: var(--f-display); font-weight: 600; font-size: .95rem; letter-spacing: -.01em;
+  transition: transform .35s var(--ease), background-color .3s, box-shadow .35s var(--ease), border-color .3s;
 }
-.intro h1 .muted { color: var(--fg-3); }
-.intro p.scope { margin: 0; max-width: 72ch; color: var(--fg-2); font-size: 16px; }
+.btn--sm { --h: 38px; padding: 0 1rem; font-size: .875rem; }
+.btn--lg { --h: 54px; padding: 0 1.6rem; }
+.btn svg { transition: transform .35s var(--ease); }
+.btn:hover .arr { transform: translateX(3px); }
+.btn--primary { background: var(--primary); color: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset, 0 10px 30px -10px var(--glow); }
+.btn--primary:hover { background: var(--primary-hi); box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset, 0 16px 40px -10px rgba(59,130,246,.7); }
+.btn--glass { background: rgba(219,234,254,.06); color: var(--white); border: 1px solid var(--border-2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.btn--glass:hover { background: rgba(219,234,254,.12); border-color: var(--border-3); }
+.kbd { font-family: var(--f-mono); font-size: .72rem; padding: .05rem .4rem; border-radius: 5px; border: 1px solid var(--border-2); background: rgba(219,234,254,.06); color: var(--muted); }
 
-/* ---------- Ferramentas ---------- */
-.tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding-bottom: 14px; }
-.filters { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip {
-  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 10px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--bg-elev); color: var(--fg-2); cursor: pointer; font-size: 13px; font-weight: 500;
-  transition: border-color .2s, color .2s, opacity .2s, background .2s;
+.eyebrow {
+  display: inline-flex; align-items: center; gap: .6rem; font-family: var(--f-display); font-size: .78rem; font-weight: 600;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--soft);
 }
-.chip:hover { border-color: var(--line-strong); color: var(--fg); }
-.chip .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--sw); box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset; }
-.chip .ct { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); }
-.chip[aria-pressed="false"] { opacity: .5; background: transparent; }
+.eyebrow::before { content: ""; width: 22px; height: 1px; background: linear-gradient(90deg, transparent, var(--primary-hi)); }
+.status-pill {
+  display: inline-flex; align-items: center; gap: .55rem; padding: .4rem .85rem .4rem .7rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 500; color: #D1FADF; background: rgba(22,163,74,.1); border: 1px solid rgba(22,163,74,.3);
+}
+.status-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--success-hi); flex: none; }
+.status-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--success); opacity: .5; animation: ping 2s ease-out infinite; }
+@keyframes ping { 0% { transform: scale(.5); opacity: .7; } 100% { transform: scale(1.8); opacity: 0; } }
+.tags { display: flex; flex-wrap: wrap; gap: .45rem; }
+.tag { display: inline-flex; align-items: center; gap: .35rem; padding: .28rem .7rem; border-radius: 6px; font-size: .8rem; font-weight: 500; line-height: 1.4; color: var(--soft); background: rgba(219,234,254,.07); border: 1px solid rgba(219,234,254,.14); }
+.tag--primary { color: #fff; background: rgba(37,99,235,.2); border-color: rgba(59,130,246,.45); }
+
+/* Vidro com brilho que segue o mouse */
+.spotlight {
+  --mx: 50%; --my: 50%; position: relative; isolation: isolate;
+  background: linear-gradient(180deg, rgba(22,58,95,.5), rgba(22,58,95,.28)); border: 1px solid var(--border); border-radius: var(--radius);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  transition: border-color .4s, transform .5s var(--ease), box-shadow .5s var(--ease);
+}
+.spotlight::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: radial-gradient(420px circle at var(--mx) var(--my), rgba(59,130,246,.16), transparent 45%); opacity: 0; transition: opacity .4s;
+}
+.spotlight::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; padding: 1px;
+  background: radial-gradient(300px circle at var(--mx) var(--my), rgba(219,234,254,.55), transparent 50%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity .4s;
+}
+.spotlight:hover::before, .spotlight:hover::after { opacity: 1; }
+.spotlight:hover { border-color: var(--border-2); }
+
+/* Revelação ao rolar (só com JS ativo) */
+.js [data-reveal] { opacity: 0; transform: translateY(28px); transition: opacity .9s var(--ease), transform .9s var(--ease); transition-delay: var(--d, 0s); }
+.js [data-reveal].is-in { opacity: 1; transform: none; }
+
+/* ---------- Navegação ---------- */
+.nav { position: fixed; inset: 0 0 auto 0; z-index: 100; padding: calc(12px + env(safe-area-inset-top, 0px)) var(--gutter) 0; transition: transform .5s var(--ease); }
+.nav.is-hidden { transform: translateY(-130%); }
+.nav__inner {
+  max-width: 1240px; margin-inline: auto; display: flex; align-items: center; gap: 1.2rem; padding: 8px 8px 8px 12px;
+  border-radius: 999px; border: 1px solid transparent; transition: background-color .4s, border-color .4s, box-shadow .4s;
+}
+.nav.is-scrolled .nav__inner { background: rgba(11,29,48,.7); border-color: var(--border); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); box-shadow: 0 10px 40px -20px rgba(0,0,0,.6); }
+.nav__brand { display: flex; align-items: center; gap: .7rem; margin-right: auto; min-width: 0; }
+.nav__logo {
+  width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex: none;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--deep) 100%); box-shadow: 0 0 0 1px rgba(219,234,254,.18) inset, 0 6px 18px -6px var(--glow);
+}
+.nav__name { font-family: var(--f-display); font-weight: 700; font-size: .98rem; color: var(--white); letter-spacing: -.01em; white-space: nowrap; }
+.nav__name small { display: block; font-family: var(--f-body); font-weight: 500; font-size: .72rem; color: var(--faint); letter-spacing: 0; margin-top: -2px; }
+.nav__links { display: flex; gap: .15rem; }
+.nav__links a { padding: .45rem .8rem; border-radius: 999px; font-size: .88rem; color: var(--muted); transition: color .3s, background-color .3s; }
+.nav__links a:hover { color: var(--white); }
+.nav__links a.is-active { color: var(--white); background: rgba(219,234,254,.08); }
+.search-btn { display: inline-flex; align-items: center; gap: .6rem; }
+
+/* ---------- Hero ---------- */
+.hero { position: relative; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; padding: 8rem 0 6rem; overflow: hidden; isolation: isolate; }
+.hero__bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: radial-gradient(120% 80% at 50% -10%, #12345A 0%, var(--bg) 60%); }
+.blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; will-change: transform; }
+.blob--1 { width: 55vw; height: 55vw; max-width: 760px; max-height: 760px; left: -12vw; top: -18vw; background: radial-gradient(circle, var(--primary) 0%, transparent 65%); animation: drift1 18s ease-in-out infinite alternate; }
+.blob--2 { width: 45vw; height: 45vw; max-width: 620px; max-height: 620px; right: -10vw; top: 10vh; background: radial-gradient(circle, var(--deep) 0%, transparent 70%); opacity: .9; animation: drift2 22s ease-in-out infinite alternate; }
+.blob--3 { width: 38vw; height: 38vw; max-width: 520px; max-height: 520px; left: 30vw; bottom: -22vw; background: radial-gradient(circle, rgba(219,234,254,.35) 0%, transparent 65%); opacity: .35; animation: drift3 26s ease-in-out infinite alternate; }
+@keyframes drift1 { to { transform: translate(8vw, 6vh) scale(1.1); } }
+@keyframes drift2 { to { transform: translate(-6vw, 10vh) scale(1.15); } }
+@keyframes drift3 { to { transform: translate(-10vw, -6vh) scale(.9); } }
+.hero__grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(219,234,254,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(219,234,254,.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
+}
+.hero__spot { --sx: 50%; --sy: 40%; position: absolute; inset: 0; background: radial-gradient(600px circle at var(--sx) var(--sy), rgba(59,130,246,.14), transparent 60%); }
+.hero::after { content: ""; position: absolute; inset: auto 0 0 0; height: 180px; background: linear-gradient(transparent, var(--bg)); z-index: -1; }
+.hero__wrap { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 3rem; align-items: center; }
+.hero__top { display: flex; flex-wrap: wrap; align-items: center; gap: .9rem 1.1rem; margin-bottom: 1.8rem; }
+.hero__name { font-family: var(--f-display); font-size: .95rem; font-weight: 600; color: var(--soft); }
+.hero__title { font-size: var(--fs-hero); font-weight: 800; letter-spacing: -0.045em; line-height: 1.02; max-width: 14ch; }
+.hero__title .w { margin-right: .07em; display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .1em; margin-bottom: -.1em; }
+.hero__title .w > span { display: inline-block; transform: translateY(105%); transition: transform 1.1s var(--ease); transition-delay: calc(var(--i) * 55ms + 150ms); }
+.hero__title.is-in .w > span { transform: none; }
+.hero__title .g > span { background: var(--grad-text); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 8s ease-in-out infinite alternate; }
+@keyframes shine { to { background-position: 100% 0; } }
+.hero__lead { margin: 1.6rem 0 0; max-width: 54ch; color: var(--muted); font-size: var(--fs-lead); }
+.hero__cta { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2.2rem; }
+.hero__chip { margin-top: 2.6rem; display: inline-flex; align-items: center; gap: .7rem; padding: .55rem .9rem .55rem .6rem; border-radius: 999px; font-size: .84rem; color: var(--muted); background: rgba(219,234,254,.04); border: 1px solid var(--border); }
+.hero__chip i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(37,99,235,.18); color: var(--soft); }
+
+/* Visual ao vivo do hero */
+.live { padding: 1.3rem; border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+.live__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .9rem; }
+.live__head b { font-family: var(--f-display); font-size: .95rem; }
+.live__head .badge { display: inline-flex; align-items: center; gap: .45rem; padding: .22rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 600; color: #BBF7D0; background: rgba(22,163,74,.12); border: 1px solid rgba(22,163,74,.35); }
+.live__head .badge .status-dot { width: 6px; height: 6px; }
+.live svg { width: 100%; height: auto; display: block; }
+.live__log { margin-top: .8rem; display: grid; gap: .35rem; font-family: var(--f-mono); font-size: .74rem; color: var(--faint); min-height: 4.6em; }
+.live__log div { display: flex; gap: .6rem; animation: logIn .6s var(--ease); }
+.live__log div b { color: var(--soft); font-weight: 500; }
+.live__log div .ok { color: var(--success-hi); }
+@keyframes logIn { from { opacity: 0; transform: translateY(6px); } }
+
+/* ---------- Seções ---------- */
+.section { padding-block: var(--section-y); position: relative; }
+.section__head { display: grid; gap: 1rem; max-width: 820px; margin-bottom: clamp(2rem, 1.4rem + 2vw, 3.4rem); }
+.section__head h2 { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; text-wrap: balance; }
+.section__head p { margin: 0; color: var(--muted); font-size: var(--fs-lead); max-width: 62ch; }
+
+/* Números */
+.numbers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.num { padding: 1.5rem 1.4rem; }
+.num strong { display: block; font-family: var(--f-display); font-size: clamp(2.2rem, 1.6rem + 2vw, 3.2rem); font-weight: 800; letter-spacing: -.045em; line-height: 1; font-variant-numeric: tabular-nums; }
+.num span { display: block; margin-top: .55rem; color: var(--muted); font-size: .9rem; line-height: 1.4; }
+
+/* ---------- Explorador C4 ---------- */
+.explorer { padding: 1rem; border-radius: var(--radius-lg); background: linear-gradient(180deg, rgba(22,58,95,.45), rgba(8,23,42,.6)); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.explorer:fullscreen { border-radius: 0; padding: 1rem; display: flex; flex-direction: column; background: var(--bg-2); overflow: auto; }
+.explorer:fullscreen .viewport { flex: 1; height: auto; min-height: 400px; }
+.ex-top { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; justify-content: space-between; }
+.levels { position: relative; display: flex; padding: 4px; gap: 2px; background: rgba(8,23,42,.7); border: 1px solid var(--border); border-radius: 999px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.levels::-webkit-scrollbar { display: none; }
+.levels .pill { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 999px; background: var(--primary); box-shadow: 0 8px 24px -8px var(--glow); transition: left .45s var(--ease), width .45s var(--ease); }
+.levels button { position: relative; z-index: 1; padding: .5rem .95rem; border-radius: 999px; font-family: var(--f-display); font-size: .86rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: .5rem; white-space: nowrap; transition: color .3s; }
+.levels button[aria-selected="true"] { color: #fff; }
+.levels button .n { font-family: var(--f-mono); font-size: .7rem; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; background: rgba(219,234,254,.1); }
+.levels button[aria-selected="true"] .n { background: rgba(255,255,255,.22); }
+.ex-actions { display: flex; gap: .5rem; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; border: 1px solid var(--border-2); background: rgba(219,234,254,.05); color: var(--muted); transition: color .3s, background-color .3s, border-color .3s; }
+.icon-btn:hover { color: #fff; background: rgba(219,234,254,.1); border-color: var(--border-3); }
+.ex-info { display: grid; gap: .35rem; padding: 1.3rem .4rem 1rem; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; font-size: .82rem; color: var(--faint); }
+.crumbs button { padding: .1rem .45rem; border-radius: 6px; color: var(--muted); }
+.crumbs button:hover { background: rgba(219,234,254,.08); color: #fff; }
+.crumbs .cur { color: var(--soft); padding: .1rem .45rem; }
+.ex-info h3 { font-size: clamp(1.4rem, 1.1rem + 1.1vw, 2rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+.ex-info p { margin: 0; color: var(--muted); max-width: 86ch; font-size: .96rem; }
+.ex-tools { display: flex; flex-wrap: wrap; gap: .7rem; justify-content: space-between; align-items: center; padding: 0 .2rem .9rem; }
+.filters { display: flex; flex-wrap: wrap; gap: .45rem; }
+.chip { display: inline-flex; align-items: center; gap: .5rem; padding: .38rem .75rem .38rem .6rem; border-radius: 999px; border: 1px solid var(--border-2); background: rgba(219,234,254,.05); color: var(--soft); font-size: .82rem; font-weight: 500; transition: opacity .3s, border-color .3s, background-color .3s; }
+.chip:hover { border-color: var(--border-3); }
+.chip .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--sw); }
+.chip .ct { font-family: var(--f-mono); font-size: .7rem; color: var(--faint); }
+.chip[aria-pressed="false"] { opacity: .45; background: transparent; }
 .chip[aria-pressed="false"] .sw { background: transparent; box-shadow: 0 0 0 1.5px var(--sw) inset; }
-.zoom { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-elev); }
-.zoom button { border: 0; background: none; height: 30px; min-width: 30px; padding: 0 8px; border-radius: 8px; cursor: pointer; color: var(--fg-2); font-size: 13px; font-weight: 550; }
-.zoom button:hover { background: var(--line); color: var(--fg); }
-.zoom output { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
+.zoom { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border-2); border-radius: 12px; background: rgba(8,23,42,.6); }
+.zoom button { height: 32px; min-width: 32px; padding: 0 .6rem; border-radius: 9px; color: var(--muted); font-weight: 600; font-size: .86rem; }
+.zoom button:hover { background: rgba(219,234,254,.08); color: #fff; }
+.zoom output { font-family: var(--f-mono); font-size: .75rem; color: var(--faint); min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
 
-/* ---------- Palco ---------- */
 .viewport {
-  position: relative; height: clamp(460px, 74vh, 880px); overflow: hidden;
-  border: 1px solid var(--line); border-radius: var(--r-lg);
-  background-color: var(--bg-elev);
-  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
-  background-size: 22px 22px;
-  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  position: relative; height: clamp(480px, 74vh, 860px); overflow: hidden; border-radius: 20px; border: 1px solid var(--border);
+  background-color: var(--bg-2);
+  background-image: linear-gradient(rgba(219,234,254,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(219,234,254,.035) 1px, transparent 1px);
+  background-size: 32px 32px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
 }
-.viewport::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  background: radial-gradient(120% 60% at 50% -10%, var(--wine-soft), transparent 60%);
-}
+.viewport::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(80% 60% at 50% 0%, rgba(37,99,235,.14), transparent 60%); }
 .viewport.grabbing { cursor: grabbing; }
 .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
-.stage.anim { transition: transform .45s cubic-bezier(.3,.8,.2,1), opacity .35s ease; }
-.stage.out { opacity: 0; }
-.stage.pre { opacity: 0; }
+.stage.anim { transition: transform .55s var(--ease), opacity .4s ease; }
+.stage.out, .stage.pre { opacity: 0; }
 svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-.hint {
-  position: absolute; left: 14px; bottom: 12px; z-index: 3; font-size: 12px; color: var(--fg-3);
-  display: flex; gap: 14px; flex-wrap: wrap; pointer-events: none;
-}
-.hint kbd, .kbd {
-  font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 5px;
-  border: 1px solid var(--line-strong); background: var(--bg-elev-2); color: var(--fg-2);
-}
+.hint { position: absolute; left: 14px; bottom: 12px; z-index: 3; display: flex; flex-wrap: wrap; gap: .9rem; font-size: .74rem; color: var(--faint); pointer-events: none; }
+
+/* Minimapa */
+.minimap { position: absolute; right: 12px; bottom: 12px; z-index: 4; border-radius: 12px; overflow: hidden; background: rgba(8,23,42,.88); border: 1px solid var(--border-2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; opacity: 0; transform: translateY(8px) scale(.96); pointer-events: none; transition: opacity .35s var(--ease), transform .35s var(--ease); }
+.minimap.show { opacity: 1; transform: none; pointer-events: auto; }
+.minimap i { position: absolute; border-radius: 2px; background: var(--mc, rgba(219,234,254,.35)); opacity: .8; }
+.minimap .mm-view { position: absolute; border: 1.5px solid var(--primary-hi); background: rgba(59,130,246,.12); border-radius: 3px; pointer-events: none; }
 
 /* Fronteiras */
-.boundary {
-  position: absolute; border: 1.5px dashed var(--line-strong); border-radius: 18px; pointer-events: none;
-  background: color-mix(in srgb, var(--fg) 1.5%, transparent);
-}
-.boundary .bl {
-  position: absolute; left: 16px; top: -12px; padding: 2px 10px; border-radius: 999px;
-  background: var(--bg-elev); border: 1px solid var(--line-strong); font-size: 12px; font-weight: 550; color: var(--fg-2);
-  white-space: nowrap; display: flex; gap: 8px; align-items: center;
-}
-.boundary .bl i { font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); }
+.boundary { position: absolute; border: 1.5px dashed var(--border-3); border-radius: 22px; pointer-events: none; background: rgba(219,234,254,.015); }
+.boundary .bl { position: absolute; left: 18px; top: -13px; padding: .12rem .7rem; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--border-2); font-family: var(--f-display); font-size: .78rem; font-weight: 600; color: var(--soft); white-space: nowrap; display: flex; gap: .5rem; align-items: center; }
+.boundary .bl i { font-style: normal; font-family: var(--f-mono); font-size: .68rem; color: var(--faint); font-weight: 400; }
 
-/* Cards */
+/* Cards do diagrama */
 .node {
   --hue: var(--c-container);
-  position: absolute; display: flex; flex-direction: column; gap: 8px; text-align: left;
-  padding: 14px 16px 16px; border-radius: var(--r-md); cursor: pointer;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--hue) calc(var(--tint) + 5%), var(--bg-elev)), color-mix(in srgb, var(--hue) var(--tint), var(--bg-elev)));
-  border: 1px solid color-mix(in srgb, var(--hue) var(--tint-border), transparent);
-  box-shadow: var(--shadow);
-  transition: opacity .25s ease, transform .25s cubic-bezier(.3,.8,.2,1), box-shadow .25s, border-color .25s, filter .25s;
+  position: absolute; display: flex; flex-direction: column; gap: .5rem; text-align: left; padding: .95rem 1rem 1.05rem; border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hue) 22%, #0D2339), color-mix(in srgb, var(--hue) 11%, #0A1B2E));
+  border: 1px solid color-mix(in srgb, var(--hue) 46%, transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px -22px rgba(0,0,0,.8);
+  transition: opacity .3s, transform .35s var(--ease), box-shadow .35s var(--ease), border-color .3s, filter .3s;
 }
-.node:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--hue) 70%, transparent); box-shadow: var(--shadow-lg); }
-.node.selected { border-color: var(--wine-fg); box-shadow: 0 0 0 3px var(--wine-soft), var(--shadow-lg); }
-.node.t-person { --hue: var(--c-person); border-radius: 22px; }
+.node:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--hue) 80%, white 5%); box-shadow: 0 1px 0 rgba(255,255,255,.07) inset, 0 26px 50px -20px rgba(0,0,0,.85), 0 0 0 1px color-mix(in srgb, var(--hue) 30%, transparent); }
+.node.selected { border-color: var(--primary-hi); box-shadow: 0 0 0 4px rgba(59,130,246,.28), 0 26px 50px -20px rgba(0,0,0,.85); }
+.node.pulse { animation: nodePulse 1.4s var(--ease) 2; }
+@keyframes nodePulse { 50% { box-shadow: 0 0 0 10px rgba(59,130,246,.28), 0 26px 50px -20px rgba(0,0,0,.85); } }
+.node.t-person { --hue: var(--c-person); border-radius: 24px; }
 .node.t-system { --hue: var(--c-system); }
 .node.t-container { --hue: var(--c-container); }
 .node.t-component { --hue: var(--c-component); }
-.node.t-db { --hue: var(--c-container); border-radius: 50% 50% var(--r-md) var(--r-md) / 22px 22px var(--r-md) var(--r-md); padding-top: 24px; }
-.node.t-db::before {
-  content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 26px; border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--hue) 60%, transparent);
-  background: color-mix(in srgb, var(--hue) calc(var(--tint) + 12%), var(--bg-elev));
-}
 .node.t-external { --hue: var(--c-external); }
+.node.t-db { --hue: var(--c-container); border-radius: 50% 50% 16px 16px / 22px 22px 16px 16px; padding-top: 1.6rem; }
+.node.t-db::before { content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 26px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--hue) 65%, transparent); background: color-mix(in srgb, var(--hue) 34%, #0D2339); }
 .node.optional { border-style: dashed; }
-.node .top { display: flex; align-items: center; gap: 8px; position: relative; }
-.node .ico {
-  width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: none;
-  background: color-mix(in srgb, var(--hue) 34%, transparent); color: color-mix(in srgb, var(--hue) var(--mix-fg-amt), var(--mix-fg));
-}
-.node .badge {
-  font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  color: color-mix(in srgb, var(--hue) var(--mix-fg-amt), var(--mix-fg));
-}
-.node .drill {
-  margin-left: auto; width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line-strong);
-  display: grid; place-items: center; color: var(--fg-2); background: var(--bg-elev);
-  transition: color .2s, background .2s, border-color .2s;
-}
-.node .drill:hover { color: #fff; background: var(--wine); border-color: var(--wine); }
-.node h3 { margin: 0; font-size: 16px; line-height: 1.25; letter-spacing: -0.01em; font-weight: 650; color: var(--fg); position: relative; }
-.node .tech { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.45; color: var(--fg-2); position: relative; }
-.node p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-2); position: relative; }
-.node.t-system h3 { font-size: 22px; }
-.node.t-system p { font-size: 14px; }
+.node .top { display: flex; align-items: center; gap: .5rem; position: relative; }
+.node .ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--hue) 38%, transparent); color: color-mix(in srgb, var(--hue) 45%, white); }
+.node .badge { font-family: var(--f-display); font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: color-mix(in srgb, var(--hue) 45%, white); }
+.node .drill { margin-left: auto; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; color: var(--soft); background: rgba(37,99,235,.25); border: 1px solid rgba(59,130,246,.5); transition: background-color .3s, transform .3s var(--ease); }
+.node .drill:hover { background: var(--primary); color: #fff; transform: scale(1.08); }
+.node h4 { font-size: 1rem; line-height: 1.25; letter-spacing: -.015em; font-weight: 700; position: relative; }
+.node .tech { font-family: var(--f-mono); font-size: .7rem; line-height: 1.45; color: var(--faint); position: relative; }
+.node p { margin: 0; font-size: .8rem; line-height: 1.5; color: var(--muted); position: relative; }
+.node.t-system h4 { font-size: 1.45rem; letter-spacing: -.03em; }
+.node.t-system p { font-size: .88rem; }
+
+/* Tabelas do modelo de dados */
+.node.t-table { padding: 0; gap: 0; overflow: hidden; border-radius: 14px; --hue: var(--area); background: linear-gradient(180deg, #0F2741, #0B1E33); border-color: color-mix(in srgb, var(--area) 40%, transparent); }
+.node.t-table .th { display: flex; flex-wrap: wrap; row-gap: .2rem; align-items: center; gap: .55rem; padding: .7rem .85rem; background: color-mix(in srgb, var(--area) 16%, #0F2741); border-bottom: 1px solid color-mix(in srgb, var(--area) 30%, transparent); }
+.node.t-table .th i { width: 9px; height: 9px; border-radius: 3px; background: var(--area); flex: none; box-shadow: 0 0 12px var(--area); }
+.node.t-table .th h4 { font-family: var(--f-mono); font-size: .76rem; font-weight: 500; letter-spacing: 0; color: #fff; white-space: nowrap; }
+.node.t-table .th span { margin-left: auto; font-size: .62rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--area); white-space: nowrap; }
+.node.t-table ul { list-style: none; margin: 0; padding: .35rem 0; }
+.node.t-table li { display: grid; grid-template-columns: 1fr auto; gap: .5rem; align-items: baseline; padding: .2rem .85rem; font-family: var(--f-mono); font-size: .7rem; color: var(--muted); }
+.node.t-table li .fn { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node.t-table li .ty { color: var(--faint); font-size: .64rem; white-space: nowrap; }
+.node.t-table li b { font-weight: 600; font-size: .58rem; padding: .02rem .3rem; border-radius: 4px; margin-right: .35rem; }
+.k-PK { color: #FCD34D; background: rgba(245,158,11,.15); }
+.k-FK { color: #93C5FD; background: rgba(59,130,246,.18); }
+.k-UK { color: #C4B5FD; background: rgba(139,92,246,.18); }
 
 /* Rótulos das setas */
 .elabel {
-  position: absolute; transform: translate(-50%, -50%); max-width: 150px; text-align: center;
-  padding: 5px 9px; border-radius: 9px; background: var(--bg-elev); border: 1px solid var(--line);
-  font-size: 11.5px; line-height: 1.3; color: var(--fg-2); pointer-events: auto; cursor: default;
-  box-shadow: 0 4px 14px -6px rgba(0,0,0,.35);
-  transition: opacity .25s, border-color .2s, color .2s;
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  position: absolute; transform: translate(-50%, -50%); max-width: 150px; text-align: center; padding: .3rem .55rem; border-radius: 9px;
+  background: rgba(11,29,48,.95); border: 1px solid var(--border-2); font-size: .7rem; line-height: 1.3; color: var(--muted);
+  pointer-events: auto; cursor: default; box-shadow: 0 6px 18px -8px rgba(0,0,0,.6);
+  transition: opacity .3s, border-color .3s, color .3s; display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
-.elabel .p { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-3); }
+.elabel .p { font-family: var(--f-mono); font-size: .64rem; color: var(--faint); }
+.elabel.erd { padding: .15rem .45rem; border-radius: 999px; }
+.elabel.erd .a { display: none; }
+.elabel.erd.e-in .a, .elabel.erd.e-out .a { display: block; }
 
 /* Setas */
-.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; marker-end: url(#ah); transition: stroke .2s, opacity .25s, stroke-width .2s; }
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; marker-end: url(#ah); transition: stroke .3s, opacity .3s, stroke-width .3s; }
 .edge.both { marker-start: url(#ah-s); }
 .edge.async { stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
 .edge.opt { stroke: var(--edge-opt); stroke-dasharray: 2 5; marker-end: url(#ah-opt); }
+.edge.erd { marker-end: url(#crow); marker-start: url(#one); }
 @keyframes flow { to { stroke-dashoffset: -22; } }
-.ehit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: default; }
+.ehit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; }
+.pulse-dot { fill: var(--out); filter: drop-shadow(0 0 6px var(--out)); }
 
-/* Destaque ao passar o mouse */
-.stage.focus .node:not(.hl):not(.nb) { opacity: .2; filter: saturate(.4); }
-.stage.focus .edge:not(.e-out):not(.e-in) { opacity: .1; }
-.stage.focus .elabel:not(.e-out):not(.e-in) { opacity: .12; }
-.stage.focus .boundary { opacity: .5; }
-.edge.e-out { stroke: var(--wine-fg); stroke-width: 2.2; marker-end: url(#ah-out); }
+.stage.focus .node:not(.hl):not(.nb) { opacity: .16; filter: saturate(.3); }
+.stage.focus .edge:not(.e-out):not(.e-in) { opacity: .08; }
+.stage.focus .elabel:not(.e-out):not(.e-in) { opacity: .08; }
+.stage.focus .boundary { opacity: .45; }
+.edge.e-out { stroke: var(--out); stroke-width: 2.4; marker-end: url(#ah-out); }
 .edge.e-out.both { marker-start: url(#ah-out-s); }
-.edge.e-in { stroke: var(--in-fg); stroke-width: 2.2; marker-end: url(#ah-in); }
+.edge.e-in { stroke: var(--in); stroke-width: 2.4; marker-end: url(#ah-in); }
 .edge.e-in.both { marker-start: url(#ah-in-s); }
-.elabel.e-out { border-color: color-mix(in srgb, var(--wine-fg) 55%, transparent); color: var(--fg); }
-.elabel.e-in { border-color: color-mix(in srgb, var(--in-fg) 55%, transparent); color: var(--fg); }
-.node.nb { opacity: 1; }
+.edge.erd.e-out, .edge.erd.e-in { marker-end: url(#crow); marker-start: url(#one); }
+.elabel.e-out { border-color: color-mix(in srgb, var(--out) 60%, transparent); color: #fff; z-index: 2; }
+.elabel.e-in { border-color: color-mix(in srgb, var(--in) 60%, transparent); color: #fff; z-index: 2; }
+.node.filtered { opacity: .06 !important; pointer-events: none; filter: grayscale(1); }
+.edge.filtered, .elabel.filtered { opacity: .04 !important; }
 
-/* Filtro */
-.node.filtered { opacity: .08 !important; pointer-events: none; filter: grayscale(1); }
-.edge.filtered, .elabel.filtered { opacity: .05 !important; }
-
-/* ---------- Legenda ---------- */
-.legend {
-  display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 16px 4px 0; font-size: 12.5px; color: var(--fg-2);
-}
-.legend .grp { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
-.legend .t { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-3); }
-.legend .it { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.legend .sw { width: 22px; height: 14px; border-radius: 4px; background: color-mix(in srgb, var(--sw) 30%, var(--bg-elev)); border: 1px solid color-mix(in srgb, var(--sw) 70%, transparent); }
-.legend .sw.person { border-radius: 8px; }
-.legend .sw.db { border-radius: 50% 50% 4px 4px / 6px 6px 4px 4px; }
-.legend .sw.opt { border-style: dashed; }
-.legend .sw.bd { background: transparent; border: 1.5px dashed var(--line-strong); }
-.legend svg { flex: none; }
-.legend .sep { width: 1px; height: 18px; background: var(--line); }
+/* Legenda */
+.legend { display: flex; flex-wrap: wrap; gap: .7rem 1.6rem; align-items: center; padding: 1rem .4rem .2rem; font-size: .8rem; color: var(--muted); }
+.legend .grp { display: flex; flex-wrap: wrap; gap: .6rem 1.1rem; align-items: center; }
+.legend .t { font-family: var(--f-display); font-size: .68rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.legend .it { display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; }
+.legend .sw { width: 22px; height: 14px; border-radius: 4px; background: color-mix(in srgb, var(--sw) 30%, #0D2339); border: 1px solid color-mix(in srgb, var(--sw) 75%, transparent); }
+.legend .sw.person { border-radius: 8px; } .legend .sw.db { border-radius: 50% 50% 4px 4px / 6px 6px 4px 4px; } .legend .sw.opt { border-style: dashed; }
+.legend .sw.bd { background: transparent; border: 1.5px dashed var(--border-3); }
 
 /* ---------- Painel lateral ---------- */
-.scrim { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .3s; }
+.scrim { position: fixed; inset: 0; z-index: 150; background: rgba(2,8,20,.5); opacity: 0; pointer-events: none; transition: opacity .4s; }
 .scrim.on { opacity: 1; pointer-events: auto; }
 .panel {
-  position: fixed; z-index: 80; top: 0; right: 0; bottom: 0; width: min(460px, 100vw);
-  background: var(--glass); backdrop-filter: saturate(170%) blur(24px); -webkit-backdrop-filter: saturate(170%) blur(24px);
-  border-left: 1px solid var(--line-strong); box-shadow: var(--shadow-lg);
-  transform: translateX(104%); transition: transform .45s cubic-bezier(.3,.8,.2,1);
-  display: flex; flex-direction: column;
-  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
+  position: fixed; z-index: 160; top: 0; right: 0; bottom: 0; width: min(480px, 100vw); display: flex; flex-direction: column;
+  background: rgba(11,29,48,.86); backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-left: 1px solid var(--border-2); box-shadow: var(--shadow); transform: translateX(104%); transition: transform .55s var(--ease);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) 0;
 }
 .panel.open { transform: none; }
-.panel header { padding: 20px 22px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
-.panel .ph-top { display: flex; align-items: center; gap: 10px; }
-.panel .tbadge {
-  --hue: var(--c-container);
-  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  padding: 4px 9px; border-radius: 999px;
-  background: color-mix(in srgb, var(--hue) 26%, transparent);
-  color: color-mix(in srgb, var(--hue) var(--mix-fg-amt), var(--mix-fg));
-  border: 1px solid color-mix(in srgb, var(--hue) 50%, transparent);
-}
+.panel header { padding: 1.3rem 1.4rem 1.1rem; border-bottom: 1px solid var(--border); display: grid; gap: .6rem; }
+.panel .ph { display: flex; align-items: center; gap: .6rem; }
+.tbadge { --hue: var(--c-container); font-family: var(--f-display); font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: .28rem .65rem; border-radius: 999px; background: color-mix(in srgb, var(--hue) 22%, transparent); color: color-mix(in srgb, var(--hue) 45%, white); border: 1px solid color-mix(in srgb, var(--hue) 50%, transparent); }
+.panel .lv { font-family: var(--f-mono); font-size: .7rem; color: var(--faint); }
 .panel .close { margin-left: auto; }
-.panel h2 { margin: 0; font-size: 26px; letter-spacing: -0.025em; line-height: 1.15; font-weight: 700; text-wrap: balance; }
-.panel .ptech { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-2); }
-.panel .body { overflow-y: auto; padding: 8px 22px 28px; display: grid; gap: 4px; overscroll-behavior: contain; }
-.panel section { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.panel h2 { font-size: 1.7rem; letter-spacing: -.035em; line-height: 1.12; font-weight: 800; overflow-wrap: anywhere; }
+.panel .ptech { font-family: var(--f-mono); font-size: .78rem; color: var(--muted); }
+.panel .body { overflow-y: auto; padding: .4rem 1.4rem 2rem; overscroll-behavior: contain; }
+.panel section { padding: 1.1rem 0; border-bottom: 1px solid var(--border); }
 .panel section:last-child { border-bottom: 0; }
-.panel h4 { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
-.panel p.lead { margin: 14px 0 0; color: var(--fg-2); font-size: 14.5px; }
-.panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.panel ul.dots li { position: relative; padding-left: 16px; font-size: 14px; color: var(--fg); }
-.panel ul.dots li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 2px; background: var(--wine-fg); }
-.panel ul.rules li::before { background: var(--in-fg); }
-.panel .stack { display: flex; flex-wrap: wrap; gap: 6px; }
-.panel .stack span { font-size: 12.5px; padding: 4px 10px; border-radius: 8px; background: var(--bg-elev-2); border: 1px solid var(--line); color: var(--fg); }
-.panel ul.api li {
-  font-family: var(--font-mono); font-size: 12px; padding: 7px 10px; border-radius: 8px; background: var(--bg-elev-2);
-  border: 1px solid var(--line); color: var(--fg); overflow-wrap: anywhere; display: flex; gap: 8px;
-}
-.panel ul.api li b { font-weight: 500; color: var(--wine-fg); flex: none; min-width: 44px; }
-.panel ul.api li b.ev { color: var(--in-fg); }
-.panel .conn { display: grid; gap: 6px; }
-.panel .conn button {
-  display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; text-align: left; width: 100%;
-  border: 1px solid var(--line); background: var(--bg-elev); border-radius: 10px; padding: 9px 12px; cursor: pointer;
-  transition: border-color .2s;
-}
-.panel .conn button:hover { border-color: var(--line-strong); }
-.panel .conn .dir { font-family: var(--font-mono); font-size: 13px; line-height: 1.4; }
-.panel .conn .dir.o { color: var(--wine-fg); }
-.panel .conn .dir.i { color: var(--in-fg); }
-.panel .conn strong { display: block; font-size: 13.5px; font-weight: 600; }
-.panel .conn small { display: block; color: var(--fg-2); font-size: 12.5px; }
-.panel .conn small .mono { color: var(--fg-3); font-size: 11.5px; }
-.drill-btn {
-  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 16px;
-  padding: 13px 16px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 600; font-size: 14.5px;
-  background: var(--wine); color: #fff; box-shadow: 0 10px 24px -10px var(--wine);
-  transition: transform .2s, filter .2s;
-}
-.drill-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.panel h5 { margin: 0 0 .7rem; font-family: var(--f-display); font-size: .7rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.panel .lead { margin: 1rem 0 0; color: var(--muted); font-size: .98rem; }
+.panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .5rem; }
+.panel ul.dots li { position: relative; padding-left: 1.05rem; font-size: .92rem; }
+.panel ul.dots li::before { content: ""; position: absolute; left: 1px; top: .62em; width: 6px; height: 6px; border-radius: 2px; background: var(--primary-hi); }
+.panel ul.rules li::before { background: var(--success-hi); }
+.panel ul.api li { display: flex; gap: .6rem; font-family: var(--f-mono); font-size: .76rem; padding: .5rem .65rem; border-radius: 9px; background: rgba(8,23,42,.6); border: 1px solid var(--border); overflow-wrap: anywhere; }
+.panel ul.api li b { flex: none; min-width: 44px; font-weight: 500; color: var(--out); }
+.panel ul.api li b.ev { color: var(--in); }
+.panel table { width: 100%; border-collapse: collapse; font-family: var(--f-mono); font-size: .76rem; }
+.panel td { padding: .42rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+.panel td:first-child { color: #fff; } .panel td:nth-child(2) { color: var(--muted); }
+.panel td b { font-weight: 600; font-size: .62rem; padding: .05rem .32rem; border-radius: 4px; }
+.conn { display: grid; gap: .45rem; }
+.conn button { display: grid; grid-template-columns: 22px 1fr; gap: .6rem; text-align: left; width: 100%; padding: .6rem .75rem; border-radius: 11px; border: 1px solid var(--border); background: rgba(8,23,42,.5); transition: border-color .3s, background-color .3s; }
+.conn button:hover { border-color: var(--border-3); background: rgba(22,58,95,.4); }
+.conn .dir { font-family: var(--f-mono); font-size: .85rem; }
+.conn .dir.o { color: var(--out); } .conn .dir.i { color: var(--in); }
+.conn strong { display: block; font-size: .88rem; font-weight: 600; color: #fff; overflow-wrap: anywhere; }
+.conn small { display: block; color: var(--muted); font-size: .8rem; }
+.conn small .mono { color: var(--faint); font-size: .72rem; }
+.drill-btn { width: 100%; margin-top: 1.1rem; }
 
-/* ---------- Bento ---------- */
-.bento-head { padding-block: 72px 22px; display: grid; gap: 10px; }
-.bento-head h2 { margin: 0; font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -0.03em; line-height: 1.1; font-weight: 700; text-wrap: balance; }
-.bento-head p { margin: 0; color: var(--fg-2); max-width: 68ch; }
-.bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
-.tile {
-  min-width: 0; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--bg-elev); padding: 24px;
-  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden;
-}
-.tile h3 { margin: 0; font-size: 19px; letter-spacing: -0.015em; line-height: 1.25; font-weight: 650; }
-.tile .k { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
-.tile p { margin: 0; color: var(--fg-2); font-size: 14px; }
-.t-flow { grid-column: span 4; }
-.t-nums { grid-column: span 2; }
-.t-stack { grid-column: span 3; }
-.t-adr { grid-column: span 3; }
-.flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: s; }
-.flow li {
-  counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 10px 0; position: relative;
-  border-bottom: 1px dashed var(--line);
-}
-.flow li:last-child { border-bottom: 0; }
-.flow li::before {
-  content: counter(s); font-family: var(--font-mono); font-size: 12px; width: 26px; height: 26px; border-radius: 8px;
-  display: grid; place-items: center; background: var(--wine-soft); color: var(--wine-fg); border: 1px solid color-mix(in srgb, var(--wine-fg) 30%, transparent);
-}
-.flow b { font-weight: 600; }
-.flow span { display: block; color: var(--fg-2); font-size: 13.5px; }
-.flow code { font-family: var(--font-mono); font-size: 12px; color: var(--fg); background: var(--bg-elev-2); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
-.nums { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; margin-top: auto; }
-.nums div { display: grid; gap: 2px; }
-.nums strong { font-size: 34px; letter-spacing: -0.04em; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
-.nums small { color: var(--fg-2); font-size: 12.5px; line-height: 1.35; }
-.stackgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
-.stackgrid div { min-width: 0; }
-.stackgrid h5 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--fg); display: flex; gap: 8px; align-items: center; }
-.stackgrid h5 i { width: 8px; height: 8px; border-radius: 2px; background: var(--sw); }
-.stackgrid p { font-size: 13px; }
-.adr { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.adr li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; font-size: 14px; }
-.adr li b { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--fg-3); padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; }
-.adr li span { color: var(--fg-2); }
-.adr li span em { font-style: normal; color: var(--fg); font-weight: 600; }
+/* ---------- Busca (paleta de comandos) ---------- */
+.cmdk { position: fixed; inset: 0; z-index: 200; display: grid; place-items: start center; padding: 12vh var(--gutter) 2rem; background: rgba(2,8,20,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity .3s; }
+.cmdk.on { opacity: 1; pointer-events: auto; }
+.cmdk__box { width: min(640px, 100%); border-radius: 20px; background: rgba(15,39,65,.92); border: 1px solid var(--border-2); box-shadow: var(--shadow); overflow: hidden; transform: translateY(10px) scale(.98); transition: transform .4s var(--ease); }
+.cmdk.on .cmdk__box { transform: none; }
+.cmdk__in { display: flex; align-items: center; gap: .7rem; padding: 0 1.1rem; border-bottom: 1px solid var(--border); color: var(--faint); }
+.cmdk__in input { flex: 1; min-width: 0; height: 58px; border: 0; outline: 0; background: none; color: #fff; font: 500 1.02rem var(--f-body); }
+.cmdk__in input::placeholder { color: var(--faint); }
+.cmdk__list { max-height: min(56vh, 440px); overflow-y: auto; padding: .5rem; }
+.cmdk__item { display: grid; grid-template-columns: 30px 1fr auto; gap: .75rem; align-items: center; width: 100%; text-align: left; padding: .6rem .7rem; border-radius: 11px; }
+.cmdk__item i { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--hue, #438DD5) 30%, transparent); color: color-mix(in srgb, var(--hue, #438DD5) 50%, white); font-style: normal; }
+.cmdk__item strong { display: block; font-size: .92rem; font-weight: 600; color: #fff; overflow-wrap: anywhere; }
+.cmdk__item small { display: block; font-size: .78rem; color: var(--faint); }
+.cmdk__item em { font-style: normal; font-family: var(--f-mono); font-size: .68rem; color: var(--faint); white-space: nowrap; }
+.cmdk__item.on { background: rgba(37,99,235,.22); }
+.cmdk__empty { padding: 1.6rem 1rem; text-align: center; color: var(--faint); font-size: .9rem; }
+.cmdk__foot { display: flex; gap: 1rem; flex-wrap: wrap; padding: .6rem 1rem; border-top: 1px solid var(--border); font-size: .74rem; color: var(--faint); }
 
-.site-foot { padding-block: 56px 40px; color: var(--fg-3); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
-.site-foot a { color: var(--fg-2); }
+/* ---------- Fluxo crítico (sequência) ---------- */
+.seq { padding: 1rem; border-radius: var(--radius-lg); }
+.seq__bar { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; justify-content: space-between; padding: .2rem .2rem 1rem; }
+.seg { display: flex; padding: 4px; gap: 2px; border-radius: 999px; background: rgba(8,23,42,.7); border: 1px solid var(--border); }
+.seg button { padding: .45rem .9rem; border-radius: 999px; font-size: .82rem; font-weight: 600; font-family: var(--f-display); color: var(--muted); transition: background-color .3s, color .3s; }
+.seg button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+.player { display: flex; align-items: center; gap: .4rem; }
+.player .icon-btn { width: 38px; height: 38px; }
+.player .play { width: 46px; height: 46px; border-radius: 50%; background: var(--primary); color: #fff; border: 0; box-shadow: 0 10px 30px -10px var(--glow); }
+.player .play:hover { background: var(--primary-hi); }
+.seq__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+.seq__canvas { overflow-x: auto; border-radius: 18px; border: 1px solid var(--border); background: var(--bg-2); }
+.seq__canvas svg { display: block; min-width: 1060px; width: 100%; height: auto; }
+.seq__side { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: .8rem; align-items: stretch; }
+.step-card { padding: 1.3rem; border-radius: 18px; }
+.step-card .k { font-family: var(--f-mono); font-size: .74rem; color: var(--primary-hi); }
+.step-card h4 { margin: .5rem 0 .6rem; font-size: 1.12rem; letter-spacing: -.02em; line-height: 1.3; }
+.step-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+.step-card .route { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .9rem; font-family: var(--f-mono); font-size: .72rem; color: var(--soft); }
+.step-card .route span { padding: .15rem .5rem; border-radius: 6px; background: rgba(219,234,254,.07); border: 1px solid var(--border-2); }
+.progress { height: 4px; border-radius: 4px; background: rgba(219,234,254,.08); overflow: hidden; }
+.progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--primary), var(--soft)); transition: width .5s var(--ease); }
+.seq-legend { display: grid; gap: .45rem; font-size: .8rem; color: var(--muted); padding: 1rem 1.2rem; border-radius: 16px; }
+.seq-legend div { display: flex; align-items: center; gap: .6rem; }
+.sq-msg { cursor: pointer; }
+.sq-msg line, .sq-msg path { transition: stroke .3s, opacity .3s, stroke-width .3s; }
+.sq-msg text { transition: fill .3s, opacity .3s; }
+.sq-msg.dim { opacity: .28; }
+.sq-msg.done line, .sq-msg.done path { stroke: rgba(147,180,248,.75); }
+.sq-msg.cur line, .sq-msg.cur path { stroke: var(--primary-hi); stroke-width: 2.6; }
+.sq-msg.cur text { fill: #fff; }
+.sq-msg.cur .num-c { fill: var(--primary); }
+.sq-msg:hover text { fill: #fff; }
 
-@media (max-width: 1000px) {
-  .t-flow, .t-nums, .t-stack, .t-adr { grid-column: span 6; }
+/* ---------- Integridade, decisões e stack ---------- */
+.guard { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.gcard { padding: 1.5rem; display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+.gcard .gi { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: rgba(37,99,235,.18); color: var(--soft); border: 1px solid rgba(59,130,246,.35); }
+.gcard h3 { font-size: 1.08rem; letter-spacing: -.02em; line-height: 1.3; }
+.gcard p { margin: 0; color: var(--muted); font-size: .9rem; }
+.gap-card { margin-top: 1rem; padding: 1.2rem 1.4rem; display: flex; gap: 1rem; align-items: flex-start; border-color: rgba(245,158,11,.3); background: linear-gradient(180deg, rgba(245,158,11,.08), rgba(22,58,95,.25)); }
+.gap-card .gi { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--warn-hi); background: rgba(245,158,11,.14); border: 1px solid rgba(245,158,11,.35); }
+.gap-card b { color: #fff; font-family: var(--f-display); }
+.gap-card p { margin: .2rem 0 0; color: var(--muted); font-size: .92rem; }
+.adrs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.adr { padding: 1.5rem; display: flex; flex-direction: column; gap: .7rem; min-width: 0; cursor: pointer; text-align: left; width: 100%; }
+.adr .n { font-family: var(--f-mono); font-size: .72rem; color: var(--primary-hi); }
+.adr h3 { font-size: 1.12rem; letter-spacing: -.02em; line-height: 1.3; }
+.adr p { margin: 0; color: var(--muted); font-size: .9rem; }
+.adr .more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s var(--ease); }
+.adr .more > div { overflow: hidden; }
+.adr .more p { padding-top: .2rem; color: var(--soft); font-size: .86rem; }
+.adr.open .more { grid-template-rows: 1fr; }
+.adr .tg { margin-top: auto; font-size: .78rem; color: var(--faint); display: flex; align-items: center; gap: .4rem; }
+.adr.open .tg svg { transform: rotate(45deg); }
+.adr .tg svg { transition: transform .4s var(--ease); }
+.stack-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.stack-card { padding: 1.5rem; display: grid; gap: .9rem; align-content: start; min-width: 0; }
+.stack-card h3 { font-size: 1.05rem; display: flex; align-items: center; gap: .6rem; }
+.stack-card h3 i { width: 10px; height: 10px; border-radius: 3px; background: var(--sw); box-shadow: 0 0 14px var(--sw); }
+
+.footer { padding-block: 4rem 3rem; border-top: 1px solid var(--border); color: var(--faint); font-size: .88rem; }
+.footer .container { display: flex; flex-wrap: wrap; gap: 1rem 2rem; justify-content: space-between; align-items: center; }
+.footer a { color: var(--soft); border-bottom: 1px solid var(--border-2); }
+.footer a:hover { border-color: var(--soft); }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 210; transform: translate(-50%, 20px); opacity: 0; padding: .65rem 1rem; border-radius: 999px; background: rgba(15,39,65,.95); border: 1px solid var(--border-2); font-size: .85rem; color: var(--soft); transition: opacity .35s, transform .45s var(--ease); pointer-events: none; box-shadow: var(--shadow); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1100px) {
+  .nav__links { display: none; }
+  .hero__wrap { grid-template-columns: 1fr; }
+  .guard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adrs, .stack-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
-  .brand span { display: none; }
-  .levels { order: 3; width: 100%; justify-content: space-between; }
-  .levels button { flex: 1; justify-content: center; padding: 7px 8px; }
-  .levels button .lt-long { display: none; }
-  .intro { padding-block: 26px 14px; }
-  .viewport { height: 64vh; border-radius: 16px; }
-  .hint { display: none; }
-  .stackgrid { grid-template-columns: 1fr; }
-  .tile { padding: 20px; }
+  .seq__side { grid-template-columns: 1fr; }
+  .numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guard, .adrs, .stack-grid { grid-template-columns: 1fr; }
+  .hero { padding-top: 7rem; min-height: auto; }
+  .nav__name small { display: none; }
+  .search-btn .kbd, .search-btn .lbl { display: none; }
+  .search-btn { width: 38px; padding: 0; }
+  .explorer { padding: .6rem; border-radius: 20px; }
+  .viewport { height: 62vh; border-radius: 14px; }
+  .hint, .minimap { display: none; }
+  .levels button { padding: .45rem .7rem; font-size: .8rem; }
+  .levels button .lt { display: none; }
+  .ex-actions .icon-btn { width: 38px; height: 38px; }
+  .seq { padding: .6rem; }
 }
-@media (min-width: 721px) { .lt-short { display: none; } }
+@media (min-width: 721px) { .levels button .ls { display: none; } }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+  .js [data-reveal] { opacity: 1; transform: none; }
+  .hero__title .w > span { transform: none; }
 }
 </style>
 </head>
 <body>
+<div class="scroll-progress" aria-hidden="true"><span id="progress"></span></div>
 
-<header class="topbar">
-  <div class="wrap">
-    <a class="brand" href="#nivel-1" aria-label="SISJOGOS, início">
-      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-        <circle cx="15" cy="15" r="13" fill="none" stroke="var(--wine-fg)" stroke-width="2"/>
-        <circle cx="15" cy="15" r="7.5" fill="none" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="3 3"/>
-        <circle cx="15" cy="2" r="2.6" fill="var(--wine-fg)"/>
-        <circle cx="26.3" cy="21.5" r="2.6" fill="var(--fg-2)"/>
-        <circle cx="3.7" cy="21.5" r="2.6" fill="var(--fg-2)"/>
-      </svg>
-      <b>SISJOGOS</b>
-      <span>Jogos Bom de Ginga 2026 · C4 Model</span>
+<header class="nav" id="nav">
+  <div class="nav__inner">
+    <a class="nav__brand" href="#inicio" aria-label="SISJOGOS, início">
+      <span class="nav__logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#fff" stroke-width="2"/><circle cx="15" cy="15" r="6.5" fill="none" stroke="#DBEAFE" stroke-opacity=".6" stroke-width="1.5" stroke-dasharray="3 3"/><circle cx="15" cy="3" r="2.6" fill="#fff"/><circle cx="25.4" cy="21" r="2.6" fill="#DBEAFE"/><circle cx="4.6" cy="21" r="2.6" fill="#DBEAFE"/></svg>
+      </span>
+      <span class="nav__name">SISJOGOS<small>Arquitetura · C4 Model</small></span>
     </a>
-    <nav class="levels" role="tablist" aria-label="Níveis do C4 Model">
-      <div class="pill" aria-hidden="true"></div>
-      <button role="tab" data-level="1" aria-selected="true"><span class="n">1</span><span class="lt-long">Contexto</span><span class="lt-short">Contexto</span></button>
-      <button role="tab" data-level="2" aria-selected="false"><span class="n">2</span><span class="lt-long">Containers</span><span class="lt-short">Containers</span></button>
-      <button role="tab" data-level="3" aria-selected="false"><span class="n">3</span><span class="lt-long">Componentes</span><span class="lt-short">API</span></button>
+    <nav class="nav__links" aria-label="Seções">
+      <a href="#numeros">Visão</a>
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#fluxo">Fluxo crítico</a>
+      <a href="#integridade">Integridade</a>
+      <a href="#decisoes">Decisões</a>
+      <a href="#stack">Stack</a>
     </nav>
-    <button class="icon-btn" id="themeBtn" aria-label="Alternar tema claro ou escuro" title="Tema (T)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+    <button class="btn btn--primary btn--sm search-btn" id="openCmdk" aria-label="Buscar na arquitetura">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <span class="lbl">Buscar</span><span class="kbd" style="color:#fff;border-color:rgba(255,255,255,.3)">Ctrl K</span>
     </button>
   </div>
 </header>
 
 <main>
-  <section class="wrap intro" aria-live="polite">
-    <div class="crumbs" id="crumbs"></div>
-    <div class="eyebrow" id="eyebrow">Nível 1 · System Context</div>
-    <h1 id="lvTitle">Contexto do sistema</h1>
-    <p class="scope" id="lvScope"></p>
-  </section>
-
-  <section class="wrap">
-    <div class="tools">
-      <div class="filters" id="filters" aria-label="Filtrar por tipo de elemento"></div>
-      <div class="zoom" aria-label="Zoom do diagrama">
-        <button id="zOut" aria-label="Diminuir zoom" title="Diminuir (−)">−</button>
-        <output id="zVal">100%</output>
-        <button id="zIn" aria-label="Aumentar zoom" title="Aumentar (+)">+</button>
-        <button id="zFit" title="Resetar e ajustar à tela (0)">Resetar</button>
+<section class="hero" id="inicio">
+  <div class="hero__bg" aria-hidden="true">
+    <div class="blob blob--1"></div><div class="blob blob--2"></div><div class="blob blob--3"></div>
+    <div class="hero__grid"></div><div class="hero__spot" id="heroSpot"></div>
+  </div>
+  <div class="container hero__wrap">
+    <div>
+      <div class="hero__top">
+        <span class="status-pill"><span class="status-dot"></span>v1.0.2 em produção</span>
+        <span class="hero__name">Jogos Bom de Ginga 2026 · CAIC</span>
       </div>
-    </div>
-
-    <div class="viewport" id="viewport">
-      <div class="stage" id="stage">
-        <svg class="edges" id="edges" aria-hidden="true">
-          <defs>
-            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--edge)"/></marker>
-            <marker id="ah-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--edge)"/></marker>
-            <marker id="ah-opt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--edge-opt)"/></marker>
-            <marker id="ah-out" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--wine-fg)"/></marker>
-            <marker id="ah-out-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--wine-fg)"/></marker>
-            <marker id="ah-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--in-fg)"/></marker>
-            <marker id="ah-in-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--in-fg)"/></marker>
-          </defs>
-          <g id="edgeLayer"></g>
-        </svg>
-        <div id="nodeLayer"></div>
-        <div id="labelLayer"></div>
+      <h1 class="hero__title" id="heroTitle" data-split>Da nota do árbitro ao telão, <span class="g">em tempo real e sem internet.</span></h1>
+      <p class="hero__lead">A arquitetura completa do SISJOGOS no C4 Model: contexto, containers, componentes e código. Três rodas de capoeira ao mesmo tempo, três árbitros por jogo e um servidor local no ginásio.</p>
+      <div class="hero__cta">
+        <a class="btn btn--primary btn--lg" href="#arquitetura">Explorar a arquitetura <svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn btn--glass btn--lg" href="#fluxo">Ver o fluxo crítico</a>
       </div>
-      <div class="hint"><span><kbd>arraste</kbd> mover</span><span><kbd>Ctrl</kbd> + roda zoom</span><span><kbd>duplo clique</kbd> entrar no nível</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> níveis</span></div>
+      <div class="hero__chip"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/></svg></i>Monólito modular · Java 21 + Spring Boot 3.5 · React 19 · MySQL 8 · RabbitMQ</div>
     </div>
+    <aside class="live spotlight" aria-label="Simulação do fluxo ao vivo">
+      <div class="live__head"><b>Rede local do evento</b><span class="badge"><span class="status-dot"></span>ao vivo</span></div>
+      <svg viewBox="0 0 420 300" role="img" aria-label="Três árbitros enviam notas para a API, que atualiza o telão">
+        <defs>
+          <linearGradient id="lg1" x1="0" x2="1"><stop offset="0" stop-color="#3B82F6" stop-opacity=".2"/><stop offset="1" stop-color="#DBEAFE" stop-opacity=".6"/></linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#lg1)" stroke-width="1.6">
+          <path id="p1" d="M70 52 C150 52 150 150 196 150"/>
+          <path id="p2" d="M70 150 L196 150"/>
+          <path id="p3" d="M70 248 C150 248 150 150 196 150"/>
+          <path id="p4" d="M262 150 C300 150 300 70 342 70"/>
+          <path id="p5" d="M262 150 C300 150 300 230 342 230"/>
+          <path id="p6" d="M229 182 L229 238"/>
+        </g>
+        <g font-family="Inter, sans-serif" font-size="11" fill="#F3F4F6">
+          <g><rect x="14" y="30" width="56" height="44" rx="12" fill="#163A5F" stroke="#3B82F6" stroke-opacity=".6"/><text x="42" y="50" text-anchor="middle" font-weight="600">Árb. A</text><text x="42" y="64" text-anchor="middle" fill="#93B4F8" font-size="9">tablet</text></g>
+          <g><rect x="14" y="128" width="56" height="44" rx="12" fill="#163A5F" stroke="#3B82F6" stroke-opacity=".6"/><text x="42" y="148" text-anchor="middle" font-weight="600">Árb. B</text><text x="42" y="162" text-anchor="middle" fill="#93B4F8" font-size="9">tablet</text></g>
+          <g><rect x="14" y="226" width="56" height="44" rx="12" fill="#163A5F" stroke="#3B82F6" stroke-opacity=".6"/><text x="42" y="246" text-anchor="middle" font-weight="600">Geral</text><text x="42" y="260" text-anchor="middle" fill="#93B4F8" font-size="9">tablet</text></g>
+          <g><rect x="196" y="118" width="66" height="64" rx="16" fill="#2563EB"/><text x="229" y="146" text-anchor="middle" font-weight="700" font-size="12">API</text><text x="229" y="162" text-anchor="middle" fill="#DBEAFE" font-size="9">Spring</text></g>
+          <g><ellipse cx="229" cy="242" rx="30" ry="7" fill="#12304F" stroke="#438DD5"/><rect x="199" y="242" width="60" height="26" fill="#12304F"/><path d="M199 242 v26 a30 7 0 0 0 60 0 v-26" fill="#12304F" stroke="#438DD5"/><text x="229" y="262" text-anchor="middle" font-size="10">MySQL</text></g>
+          <g><rect x="342" y="46" width="66" height="48" rx="12" fill="#0F2741" stroke="#DBEAFE" stroke-opacity=".35"/><text x="375" y="67" text-anchor="middle" font-weight="600">Telão</text><text x="375" y="81" text-anchor="middle" fill="#93B4F8" font-size="9">SSE</text></g>
+          <g><rect x="342" y="206" width="66" height="48" rx="12" fill="#0F2741" stroke="#DBEAFE" stroke-opacity=".35"/><text x="375" y="227" text-anchor="middle" font-weight="600">Público</text><text x="375" y="241" text-anchor="middle" fill="#93B4F8" font-size="9">celular</text></g>
+        </g>
+        <g fill="#93C5FD">
+          <circle r="4"><animateMotion dur="2.4s" repeatCount="indefinite" begin="0s"><mpath href="#p1"/></animateMotion></circle>
+          <circle r="4"><animateMotion dur="2.4s" repeatCount="indefinite" begin="-2.15s"><mpath href="#p2"/></animateMotion></circle>
+          <circle r="4"><animateMotion dur="2.4s" repeatCount="indefinite" begin="-1.9s"><mpath href="#p3"/></animateMotion></circle>
+        </g>
+        <g fill="#FCD34D">
+          <circle r="3.5"><animateMotion dur="1.2s" repeatCount="indefinite" begin="-.6s"><mpath href="#p6"/></animateMotion></circle>
+        </g>
+        <g fill="#4ADE80">
+          <circle r="4"><animateMotion dur="1.6s" repeatCount="indefinite" begin="-.2s"><mpath href="#p4"/></animateMotion></circle>
+          <circle r="4"><animateMotion dur="1.6s" repeatCount="indefinite" begin="-1s"><mpath href="#p5"/></animateMotion></circle>
+        </g>
+      </svg>
+      <div class="live__log" id="liveLog" aria-live="off"></div>
+    </aside>
+  </div>
+</section>
 
-    <div class="legend" aria-label="Legenda">
-      <div class="grp">
-        <span class="t">Elementos</span>
-        <span class="it"><i class="sw person" style="--sw: var(--c-person)"></i>Pessoa</span>
-        <span class="it"><i class="sw" style="--sw: var(--c-system)"></i>Sistema em foco</span>
-        <span class="it"><i class="sw" style="--sw: var(--c-container)"></i>Container</span>
-        <span class="it"><i class="sw" style="--sw: var(--c-component)"></i>Componente</span>
-        <span class="it"><i class="sw db" style="--sw: var(--c-container)"></i>Banco de dados</span>
-        <span class="it"><i class="sw" style="--sw: var(--c-external)"></i>Sistema externo</span>
-        <span class="it"><i class="sw opt" style="--sw: var(--c-external)"></i>Externo opcional</span>
-        <span class="it"><i class="sw bd"></i>Fronteira</span>
-      </div>
-      <span class="sep" aria-hidden="true"></span>
-      <div class="grp">
-        <span class="t">Relações</span>
-        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge)" stroke-width="1.8"/></svg>Síncrona (HTTPS, REST, SQL)</span>
-        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge)" stroke-width="1.8" stroke-dasharray="6 5"/></svg>Assíncrona (AMQP, SSE, evento)</span>
-        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge-opt)" stroke-width="1.8" stroke-dasharray="2 5"/></svg>Opcional</span>
-        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--wine-fg)" stroke-width="2.2"/></svg>Saída</span>
-        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--in-fg)" stroke-width="2.2"/></svg>Entrada</span>
-      </div>
+<section class="section" id="numeros" style="padding-top: 1rem">
+  <div class="container">
+    <div class="numbers">
+      <div class="num spotlight" data-reveal><strong data-count="3">0</strong><span>rodas físicas jogando ao mesmo tempo</span></div>
+      <div class="num spotlight" data-reveal style="--d:.06s"><strong data-count="3">0</strong><span>árbitros avaliando cada jogo em paralelo</span></div>
+      <div class="num spotlight" data-reveal style="--d:.12s"><strong data-count="1000" data-suffix="+">0</strong><span>casos de teste no backend, com Testcontainers</span></div>
+      <div class="num spotlight" data-reveal style="--d:.18s"><strong data-count="2" data-prefix="&lt; " data-suffix=" s">0</strong><span>meta para recalcular a árvore do torneio</span></div>
+      <div class="num spotlight" data-reveal><strong data-count="11">0</strong><span>categorias oficiais por idade e graduação</span></div>
+      <div class="num spotlight" data-reveal style="--d:.06s"><strong data-count="35">0</strong><span>migrations Flyway, schema validado na subida</span></div>
+      <div class="num spotlight" data-reveal style="--d:.12s"><strong data-count="21">0</strong><span>tabelas principais no modelo de domínio</span></div>
+      <div class="num spotlight" data-reveal style="--d:.18s"><strong data-count="0" data-suffix=" internet">0</strong><span>dependência de nuvem durante o campeonato</span></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="wrap">
-    <div class="bento-head">
-      <div class="eyebrow">Por dentro</div>
-      <h2>Um campeonato inteiro rodando num notebook, sem internet</h2>
-      <p>O SISJOGOS gerencia de ponta a ponta as competições de capoeira dos Jogos Bom de Ginga 2026: 3 rodas ao mesmo tempo, 11 categorias e 3 árbitros avaliando cada jogo pelo tablet, num servidor local acessado pelo Wi-Fi do ginásio.</p>
+<section class="section" id="arquitetura">
+  <div class="container">
+    <div class="section__head" data-reveal>
+      <span class="eyebrow">C4 Model</span>
+      <h2>Quatro níveis de zoom, <span class="text-gradient">do ginásio ao banco.</span></h2>
+      <p>Passe o mouse em um elemento para ver o que entra e o que sai dele. Clique para abrir os detalhes e use o botão de zoom do card para descer ao próximo nível.</p>
     </div>
-    <div class="bento">
-      <article class="tile t-flow">
-        <span class="k">Fluxo crítico</span>
-        <h3>Da nota do árbitro ao telão, em tempo real</h3>
-        <ol class="flow">
-          <li><div><b>3 árbitros lançam ao mesmo tempo</b><span>Cada um vê só os botões da sua função (Atleta A, Atleta B ou Geral) e envia <code>POST /api/avaliacoes/lancar</code>.</span></div></li>
-          <li><div><b>Security Filter Chain valida o JWT</b><span>Só o perfil ÁRBITRO passa por <code>@AcessoLancamentoNotas</code>.</span></div></li>
-          <li><div><b>Motor de avaliação</b><span>validator, processor e calculator. UNIQUE no banco impede nota duplicada; consolida só com as 3 notas.</span></div></li>
-          <li><div><b>Resultado = Pontos Técnicos − Penalidades</b><span>O jogo trava. Empate gera um novo jogo; W.O. desclassifica o ausente.</span></div></li>
-          <li><div><b>ResultadoProcessadoEvent, depois do commit</b><span>Chaveamento avança o vencedor na árvore e o publicador avisa o RabbitMQ.</span></div></li>
-          <li><div><b>CanalAoVivo transmite por SSE</b><span>Resultados, telão e monitoramento recebem o novo retrato da categoria. Sem broker, a entrega é local.</span></div></li>
-        </ol>
-      </article>
-      <article class="tile t-nums">
-        <span class="k">Em números</span>
-        <h3>Feito para o dia do evento</h3>
-        <div class="nums">
-          <div><strong>3</strong><small>rodas físicas simultâneas</small></div>
-          <div><strong>11</strong><small>categorias oficiais</small></div>
-          <div><strong>1.000+</strong><small>casos de teste no backend</small></div>
-          <div><strong>35</strong><small>migrations Flyway</small></div>
-          <div><strong>12</strong><small>domínios no monólito modular</small></div>
-          <div><strong>&lt; 2 s</strong><small>meta para recalcular a árvore</small></div>
+    <div class="explorer" id="explorer" data-reveal>
+      <div class="ex-top">
+        <nav class="levels" role="tablist" aria-label="Níveis do C4 Model">
+          <div class="pill" aria-hidden="true"></div>
+          <button role="tab" data-level="1" aria-selected="true"><span class="n">1</span><span class="lt">Contexto</span><span class="ls">Contexto</span></button>
+          <button role="tab" data-level="2" aria-selected="false"><span class="n">2</span><span class="lt">Containers</span><span class="ls">Containers</span></button>
+          <button role="tab" data-level="3" aria-selected="false"><span class="n">3</span><span class="lt">Componentes</span><span class="ls">API</span></button>
+          <button role="tab" data-level="4" aria-selected="false"><span class="n">4</span><span class="lt">Código e Dados</span><span class="ls">Dados</span></button>
+        </nav>
+        <div class="ex-actions">
+          <button class="icon-btn" id="exSearch" title="Buscar (Ctrl K)" aria-label="Buscar elemento"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+          <button class="icon-btn" id="exFull" title="Tela cheia (F)" aria-label="Tela cheia"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
-      </article>
-      <article class="tile t-stack">
-        <span class="k">Stack</span>
-        <h3>Tecnologias por camada</h3>
-        <div class="stackgrid">
-          <div><h5><i style="--sw: var(--c-container)"></i>Backend</h5><p>Java 21, Spring Boot 3.5, Spring Security (OAuth2 Resource Server, JWT RSA), Spring Data JPA, Spring AMQP, WebFlux só para SSE, springdoc.</p></div>
-          <div><h5><i style="--sw: var(--c-component)"></i>Frontend</h5><p>React 19, TypeScript, Vite, Ant Design, TanStack Query, Axios, React Router 7, fetch-event-source.</p></div>
-          <div><h5><i style="--sw: var(--c-system)"></i>Dados e tempo real</h5><p>MySQL 8 com Flyway e <span class="mono">ddl-auto=validate</span>, RabbitMQ 4.1 (fanout), Server-Sent Events.</p></div>
-          <div><h5><i style="--sw: var(--c-person)"></i>Infra</h5><p>Docker Compose, Nginx com HTTPS local, GitHub Actions, GHCR, runner self-hosted, Proxmox VE e cloud-init.</p></div>
-          <div><h5><i style="--sw: var(--wine)"></i>Observabilidade</h5><p>Prometheus e alertas, Grafana, Loki + Alloy, Uptime Kuma, cAdvisor, Glowroot (APM).</p></div>
-          <div><h5><i style="--sw: var(--c-external)"></i>Qualidade</h5><p>JUnit 5, Mockito, Testcontainers (MySQL e RabbitMQ reais), Allure, JaCoCo, SonarCloud.</p></div>
+      </div>
+      <div class="ex-info" aria-live="polite">
+        <div class="crumbs" id="crumbs"></div>
+        <h3 id="lvTitle">Contexto do sistema</h3>
+        <p id="lvScope"></p>
+      </div>
+      <div class="ex-tools">
+        <div class="filters" id="filters" aria-label="Filtrar elementos"></div>
+        <div class="zoom" aria-label="Zoom">
+          <button id="zOut" aria-label="Diminuir zoom" title="Diminuir (−)">−</button>
+          <output id="zVal">100%</output>
+          <button id="zIn" aria-label="Aumentar zoom" title="Aumentar (+)">+</button>
+          <button id="zFit" title="Resetar e ajustar (0)">Resetar</button>
         </div>
-      </article>
-      <article class="tile t-adr">
-        <span class="k">Decisões arquiteturais</span>
-        <h3>Por que é assim</h3>
-        <ul class="adr">
-          <li><b>ADR 1</b><span><em>Servidor local, offline.</em> Nenhuma nuvem em tempo de evento; o próprio backend emite o JWT.</span></li>
-          <li><b>ADR 2</b><span><em>API stateless com JWT (RSA).</em> O token carrega o perfil; árbitros, telão e mesa não dependem de sessão.</span></li>
-          <li><b>ADR 3</b><span><em>SSE em vez de WebSocket.</em> O fluxo é servidor → cliente e passa pelo Nginx sem complicação.</span></li>
-          <li><b>ADR 4</b><span><em>RabbitMQ só como sinal.</em> Desacopla quem altera de quem exibe; o MySQL é a única fonte oficial.</span></li>
-          <li><b>ADR 5</b><span><em>Flyway + validate.</em> A API não sobe se o schema divergir; migration aplicada nunca é editada.</span></li>
-          <li><b>ADR 6</b><span><em>Integridade no banco.</em> UNIQUE para ordem de jogo, avaliação por árbitro e histórico por atleta.</span></li>
-          <li><b>ADR 7</b><span><em>Uma VM de produção.</em> Mais simples de operar no dia do campeonato do que app e banco separados.</span></li>
-        </ul>
-      </article>
+      </div>
+      <div class="viewport" id="viewport">
+        <div class="stage" id="stage">
+          <svg class="edges" id="edges" aria-hidden="true">
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--edge)"/></marker>
+              <marker id="ah-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--edge)"/></marker>
+              <marker id="ah-opt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--edge-opt)"/></marker>
+              <marker id="ah-out" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--out)"/></marker>
+              <marker id="ah-out-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--out)"/></marker>
+              <marker id="ah-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--in)"/></marker>
+              <marker id="ah-in-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--in)"/></marker>
+              <marker id="crow" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="12" markerHeight="12" orient="auto"><path d="M13 1L2 7L13 13M2 1V13" fill="none" stroke="rgba(219,234,254,.6)" stroke-width="1.4"/></marker>
+              <marker id="one" viewBox="0 0 14 14" refX="1" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M6 1V13M10 1V13" fill="none" stroke="rgba(219,234,254,.6)" stroke-width="1.4"/></marker>
+            </defs>
+            <g id="edgeLayer"></g>
+          </svg>
+          <div id="nodeLayer"></div>
+          <div id="labelLayer"></div>
+        </div>
+        <div class="hint"><span><span class="kbd">arraste</span> mover</span><span><span class="kbd">Ctrl</span> + roda zoom</span><span><span class="kbd">duplo clique</span> descer um nível</span><span><span class="kbd">1</span>–<span class="kbd">4</span> níveis</span></div>
+        <div class="minimap" id="minimap" aria-hidden="true"></div>
+      </div>
+      <div class="legend" id="legend"></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <footer class="wrap site-foot">
-    <span>SISJOGOS · Jogos Bom de Ginga 2026 · Arquitetura por Matheus Albuquerque</span>
-    <span>C4 Model de Simon Brown · HTML, CSS e JavaScript puros</span>
-  </footer>
+<section class="section" id="fluxo">
+  <div class="container">
+    <div class="section__head" data-reveal>
+      <span class="eyebrow">Nível 4 · Fluxo crítico</span>
+      <h2>Três árbitros lançam juntos. <span class="text-gradient">Só o último consolida.</span></h2>
+      <p>O caminho real de <span class="mono">POST /api/avaliacoes/lancar</span> até o telão, com as classes de assessment, resultados e settings. Dê play ou clique em uma seta para ver o que acontece em cada passo.</p>
+    </div>
+    <div class="seq spotlight" data-reveal>
+      <div class="seq__bar">
+        <div class="seg" role="group" aria-label="Cenário">
+          <button data-sc="last" aria-pressed="true">Último dos 3 lançamentos</button>
+          <button data-sc="pend" aria-pressed="false">Ainda falta árbitro</button>
+        </div>
+        <div class="player">
+          <button class="icon-btn" id="sqFirst" aria-label="Primeiro passo" title="Primeiro passo"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+          <button class="icon-btn" id="sqPrev" aria-label="Passo anterior" title="Anterior (←)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="icon-btn play" id="sqPlay" aria-label="Reproduzir" title="Reproduzir (espaço)"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" id="sqPlayIco"><path d="M7 4v16l13-8z"/></svg></button>
+          <button class="icon-btn" id="sqNext" aria-label="Próximo passo" title="Próximo (→)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="seq__grid">
+        <div class="seq__canvas"><svg id="seqSvg" role="img" aria-label="Diagrama de sequência do lançamento da avaliação"></svg></div>
+        <div class="seq__side">
+          <div class="step-card spotlight">
+            <div class="k" id="stK">Passo 1 de 13</div>
+            <h4 id="stT"></h4>
+            <p id="stW"></p>
+            <div class="route" id="stR"></div>
+            <div class="progress" style="margin-top:1rem"><span id="stP"></span></div>
+          </div>
+          <div class="seq-legend spotlight">
+            <div><svg width="40" height="10"><line x1="1" y1="5" x2="31" y2="5" stroke="#DBEAFE" stroke-opacity=".6" stroke-width="1.6"/><path d="M31 1L39 5L31 9z" fill="#DBEAFE" fill-opacity=".6"/></svg>Chamada síncrona</div>
+            <div><svg width="40" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="#DBEAFE" stroke-opacity=".6" stroke-width="1.6" stroke-dasharray="4 4"/><path d="M31 1L39 5L31 9" fill="none" stroke="#DBEAFE" stroke-opacity=".6" stroke-width="1.6"/></svg>Resposta</div>
+            <div><svg width="40" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="#FCD34D" stroke-opacity=".8" stroke-width="1.6" stroke-dasharray="6 3"/><path d="M31 1L39 5L31 9" fill="none" stroke="#FCD34D" stroke-width="1.6"/></svg>Evento assíncrono</div>
+            <div><svg width="40" height="12"><rect x="1" y="1" width="38" height="10" rx="3" fill="none" stroke="#B8ACFB" stroke-dasharray="3 3"/></svg>alt: caminho alternativo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="integridade">
+  <div class="container">
+    <div class="section__head" data-reveal>
+      <span class="eyebrow">Integridade</span>
+      <h2>Nenhuma nota perdida, <span class="text-gradient">nenhum avanço duplicado.</span></h2>
+      <p>As garantias que o banco e o código já dão hoje, e a lacuna que ainda está no backlog.</p>
+    </div>
+    <div class="guard">
+      <article class="gcard spotlight" data-reveal><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h3>Lock do jogo</h3><p>buscarJogoParaAvaliacao trava o jogo: os 3 árbitros lançam ao mesmo tempo e só o último consolida.</p></article>
+      <article class="gcard spotlight" data-reveal style="--d:.08s"><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="19" cy="17" r="2"/></svg></span><h3>Restrições UNIQUE</h3><p>Lançamento por jogo e função, ordem do jogo e histórico por atleta: sem nota nem avanço duplicados.</p></article>
+      <article class="gcard spotlight" data-reveal style="--d:.16s"><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>Jogo finalizado trava</h3><p>Jogo FINALIZADO não aceita novo lançamento, e o chaveamento trava depois que um jogo começa.</p></article>
+      <article class="gcard spotlight" data-reveal style="--d:.24s"><span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h4l3-8 3 16 3-8h3"/></svg></span><h3>Aviso só após o commit</h3><p>Os painéis só recebem o aviso depois do commit. Sem RabbitMQ, a entrega é local e o lançamento nunca falha.</p></article>
+    </div>
+    <div class="gap-card spotlight" data-reveal>
+      <span class="gi"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+      <div><b>Lacuna conhecida</b><p>Se o Wi-Fi cair antes do POST, a nota fica só na tela do tablet. A fila offline está prevista no épico de Confiabilidade e Operação do Evento.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="decisoes">
+  <div class="container">
+    <div class="section__head" data-reveal>
+      <span class="eyebrow">Decisões arquiteturais</span>
+      <h2>Por que é assim, <span class="text-gradient">em sete decisões.</span></h2>
+      <p>Clique em uma decisão para ver a alternativa que foi descartada.</p>
+    </div>
+    <div class="adrs" id="adrs"></div>
+  </div>
+</section>
+
+<section class="section" id="stack">
+  <div class="container">
+    <div class="section__head" data-reveal>
+      <span class="eyebrow">Stack</span>
+      <h2>Tecnologias <span class="text-gradient">por camada.</span></h2>
+    </div>
+    <div class="stack-grid" id="stackGrid"></div>
+  </div>
+</section>
 </main>
 
+<footer class="footer">
+  <div class="container">
+    <span>SISJOGOS · Jogos Bom de Ginga 2026 · Arquitetura por Matheus Albuquerque</span>
+    <span><a href="https://devalbuquerque98.github.io/portfolio-site/">Portfólio</a> · C4 Model de Simon Brown · HTML, CSS e JavaScript puros</span>
+  </div>
+</footer>
+
 <div class="scrim" id="scrim"></div>
-<aside class="panel" id="panel" aria-hidden="true" aria-labelledby="pTitle" role="dialog">
+<aside class="panel" id="panel" aria-hidden="true" role="dialog" aria-labelledby="pTitle">
   <header>
-    <div class="ph-top">
-      <span class="tbadge" id="pBadge">Container</span>
-      <button class="icon-btn close" id="pClose" aria-label="Fechar painel (Esc)" title="Fechar (Esc)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
+    <div class="ph">
+      <span class="tbadge" id="pBadge">Container</span><span class="lv" id="pLv"></span>
+      <button class="icon-btn close" id="pClose" aria-label="Fechar (Esc)" title="Fechar (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <h2 id="pTitle"></h2>
     <div class="ptech" id="pTech"></div>
@@ -612,30 +781,29 @@ svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-even
   <div class="body" id="pBody"></div>
 </aside>
 
+<div class="cmdk" id="cmdk" aria-hidden="true">
+  <div class="cmdk__box" role="dialog" aria-label="Buscar na arquitetura">
+    <div class="cmdk__in">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="cmdkInput" type="text" placeholder="Buscar container, componente, tabela, endpoint…" autocomplete="off" spellcheck="false" aria-label="Buscar">
+      <span class="kbd">Esc</span>
+    </div>
+    <div class="cmdk__list" id="cmdkList" role="listbox"></div>
+    <div class="cmdk__foot"><span><span class="kbd">↑</span> <span class="kbd">↓</span> navegar</span><span><span class="kbd">Enter</span> abrir</span><span><span class="kbd">1</span>–<span class="kbd">4</span> níveis · <span class="kbd">F</span> tela cheia</span></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
 <script>
 (() => {
 "use strict";
+document.documentElement.classList.add("js");
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/* ===================== Ícones ===================== */
-const ICON = {
-  person: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>',
-  system: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg>',
-  container: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
-  component: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
-  db: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></svg>',
-  external: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 3.5 5.4 3.5 8.5s-1.1 5.9-3.5 8.5c-2.4-2.6-3.5-5.4-3.5-8.5s1.1-5.9 3.5-8.5z"/></svg>',
-  zoom: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>'
-};
-const TYPE_LABEL = { person: "Pessoa", system: "Sistema de software", container: "Container", component: "Componente", db: "Banco de dados", external: "Sistema externo" };
-const TYPE_HUE = { person: "var(--c-person)", system: "var(--c-system)", container: "var(--c-container)", component: "var(--c-component)", db: "var(--c-container)", external: "var(--c-external)" };
-const FILTERS = [
-  { id: "atores", label: "Atores", sw: "var(--c-person)", types: ["person"] },
-  { id: "internos", label: "Sistemas internos", sw: "var(--c-container)", types: ["system", "container", "component"] },
-  { id: "externos", label: "Sistemas externos", sw: "var(--c-external)", types: ["external"] },
-  { id: "dados", label: "Bancos de dados", sw: "var(--c-component)", types: ["db"] }
-];
-
-/* ===================== Dados da arquitetura (board do Miro + repositório) ===================== */
+/* ===================== Dados ===================== */
 const LEVELS = {
   1: {
     key: "Contexto", eyebrow: "Nível 1 · System Context", title: "Contexto do sistema",
@@ -828,7 +996,7 @@ const LEVELS = {
         stack: ["Validator", "Processor", "Calculator", "Resolver", "Distributor", "Finder", "Factory"],
         api: [["POST", "/api/avaliacoes/lancar"], ["GET", "/api/avaliacoes/validar"], ["EVT", "ResultadoProcessadoEvent"]],
         rules: ["Impede avaliação duplicada", "Impede alterar avaliação consolidada", "Aceita avaliação sem proibição"] },
-      { id: "repo", type: "component", x: 1280, y: 540, w: 260, title: "Repositories + Mappers", tech: "Spring Data JPA · Entity ↔ DTO",
+      { id: "repo", type: "component", x: 1280, y: 540, w: 260, drill: 4, title: "Repositories + Mappers", tech: "Spring Data JPA · Entity ↔ DTO",
         desc: "Acesso a dados e conversão entre entidade e DTO. Locks e UNIQUE impedem nota e avanço duplicados.",
         resp: ["Consultas e gravação com Spring Data JPA", "Mapeiam entidades para DTOs", "Usam locks onde há concorrência (3 árbitros, 3 rodas)"],
         stack: ["Spring Data JPA", "Hibernate", "Mappers"],
@@ -889,218 +1057,452 @@ const LEVELS = {
   }
 };
 
-/* ===================== Estado e referências ===================== */
-const $ = (s, r = document) => r.querySelector(s);
+
+/* Nível 4 · Código e Dados: entidades JPA reais (Flyway V1 a V35) */
+const AREAS = {
+  cad: { label: "Cadastros", hue: "#A0C4FB" },
+  reg: { label: "Regulamento", hue: "#C9CBD3" },
+  tor: { label: "Torneio", hue: "#7DD9F5" },
+  ava: { label: "Avaliação", hue: "#B8ACFB" },
+  res: { label: "Resultado", hue: "#B3E65F" },
+  pro: { label: "Programação", hue: "#FFE070" }
+};
+const T = (id, area, x, y, desc, fields, rules) => ({ id, type: "table", area, x, y, w: 250, title: id, tech: "Tabela MySQL · entidade JPA", desc, fields, rules: rules || [] });
+LEVELS[4] = {
+  key: "Código e Dados", eyebrow: "Nível 4 · Código e Dados", title: "Modelo de domínio e banco",
+  scope: "O nível de código: as tabelas principais com os campos das entidades JPA (domain/**/entity), versionadas pelo Flyway de V1 a V35. Cores por área do domínio. O caminho real de POST /avaliacoes/lancar até o telão está no fluxo crítico, logo abaixo.",
+  size: [2330, 1220], parent: "repo", mode: "erd",
+  boundaries: [],
+  nodes: [
+    T("PERIODOS_EVENTO", "pro", 40, 40, "Os dias e turnos do evento (05 e 06/09).", [["idPeriodo", "Long", "PK"], ["dataPeriodo", "LocalDate"], ["horarioInicio", "LocalTime"], ["horarioFim", "LocalTime"]]),
+    T("BLOCOS_EVENTO", "pro", 40, 290, "Cada período é dividido em blocos numerados.", [["idBloco", "Long", "PK"], ["periodo", "Long", "FK"], ["numeroBloco", "Integer"]]),
+    T("PROGRAMACAO_BLOCOS_RODAS", "pro", 40, 510, "Quais rodas físicas funcionam em cada bloco.", [["idBlocoRoda", "Long", "PK"], ["bloco", "Long", "FK"], ["roda", "Long", "FK"]]),
+    T("PROGRAMACAO_CATEGORIAS", "pro", 40, 730, "A ordem em que as categorias entram em cada roda do bloco.", [["idProgramacaoCategoria", "Long", "PK"], ["blocoRoda", "Long", "FK"], ["categoria", "Long", "FK"], ["ordemExecucao", "Integer"], ["concluida", "Boolean"]], ["Check de concluído alimenta o painel da programação"]),
+    T("FASES_PROGRAMACAO", "pro", 40, 1010, "Fases previstas por categoria e quantos jogos cada uma tem.", [["idFaseProgramacao", "Long", "PK"], ["programacaoCategoria", "Long", "FK"], ["etapa", "enum"], ["quantidadeJogos", "Integer"]], ["Jogos gerados automaticamente por fase"]),
+
+    T("USUARIOS", "cad", 440, 40, "Login e perfil de quem usa o sistema.", [["idUsuario", "Long", "PK"], ["login", "String", "UK"], ["perfil", "enum ADMIN · ORGANIZADOR · ASSISTENTE · ARBITRO"], ["arbitro", "Long", "FK"]], ["O perfil vai dentro do JWT", "Usuário árbitro aponta para o seu cadastro de árbitro"]),
+    T("RODAS", "cad", 440, 330, "As 3 áreas de jogo físicas do ginásio.", [["idRoda", "Long", "PK"], ["bloco", "String"], ["descricao", "String"]]),
+    T("CATEGORIAS", "reg", 440, 560, "As 11 categorias oficiais por idade, gênero e graduação.", [["idCategoria", "Long", "PK"], ["categoria", "String"], ["generoCategoria", "enum"], ["idadeMinima", "Integer"], ["idadeMaxima", "Integer"], ["modeloCriterio", "enum INFANTO · ADULTO"], ["podioLiberado", "Boolean"]], ["O modelo define quais critérios os árbitros usam", "Pódio só aparece depois de liberado"]),
+    T("PREMIACOES", "reg", 440, 920, "Premiação de cada posição do pódio na categoria.", [["idPremiacoes", "Long", "PK"], ["posicao", "String"], ["premiacaoCategoriaID", "Long", "FK"]]),
+
+    T("ARBITROS", "cad", 840, 40, "Árbitro com função fixa na banca e a roda em que atua.", [["idArbitro", "Long", "PK"], ["nome", "String"], ["funcaoArbitro", "enum ATLETA_A · ATLETA_B · GERAL"], ["roda", "Long", "FK"]], ["Função fixa: vê só os botões dela", "Avalia só jogos da sua roda"]),
+    T("ATLETAS", "cad", 840, 300, "Atleta inscrito, com corda (graduação) e grupo.", [["idAtleta", "Long", "PK"], ["nome", "String"], ["apelido", "String"], ["graduacaoCorda", "String"], ["grupoAcademia", "String"], ["statusAtleta", "enum ATIVO · INATIVO · DESCLASSIFICADO"], ["categorias", "Long", "FK"]], ["Nome mascarado nas telas públicas (LGPD)", "W.O. ou proibição grave desclassifica"]),
+    T("CHAVEAMENTO", "tor", 840, 650, "Uma fase do torneio de uma categoria.", [["idChaveamento", "Long", "PK"], ["fases", "enum"], ["statusFase", "enum"], ["tipoFinalizacao", "enum"], ["categorias", "Long", "FK"]], ["Trava depois que um jogo começa", "Finalização de fase com prévia e confirmação"]),
+    T("HISTORICO_CLASSIFICATORIA", "tor", 840, 930, "Nota acumulada de cada atleta na fase classificatória.", [["idHistoricoClassificatoria", "Long", "PK"], ["atleta", "Long", "FK"], ["chaveamento", "Long", "FK"], ["notaAcumulada", "BigDecimal"], ["classificado", "Boolean"]], ["UNIQUE por atleta: sem histórico duplicado"]),
+
+    T("LANCAMENTO_AVALIACAO", "ava", 1240, 40, "O lançamento de um árbitro em um jogo: até 3 por jogo, um por função.", [["idLancamento", "Long", "PK"], ["jogos", "Long", "FK"], ["arbitro", "Long", "FK"], ["funcaoArbitro", "enum", "UK"], ["loginUsuario", "String"], ["somaNotas", "BigDecimal"]], ["UNIQUE (jogo, função): impede nota duplicada", "Jogo FINALIZADO não aceita novo lançamento"]),
+    T("JOGOS", "tor", 1240, 400, "Um confronto entre atleta A e atleta B, ligado ao próximo jogo da árvore.", [["idJogos", "Long", "PK"], ["chaveamento", "Long", "FK"], ["atletaA", "Long", "FK"], ["atletaB", "Long", "FK"], ["statusJogo", "enum AGUARDANDO · FINALIZADO"], ["ordemJogo", "Integer", "UK"], ["proximoJogoId", "Long", "FK"], ["proximoJogoPerdedorId", "Long", "FK"], ["jogoDesempate", "Boolean"]], ["Lock do jogo enquanto os árbitros lançam", "O vencedor vai para proximoJogoId; o perdedor da semifinal, para a disputa de 3º", "Empate cria um jogo de desempate", "UNIQUE na ordem do jogo"]),
+    T("RESULTADO_JOGO", "res", 1240, 830, "Quem venceu o jogo e quem foi desclassificado.", [["idResultado", "Long", "PK"], ["jogos", "Long", "FK"], ["atletaVencedor", "Long", "FK"], ["atletaDesclassificado", "Long", "FK"]], ["Resultado finalizado não pode ser alterado", "Gravado pelo listener depois da consolidação"]),
+
+    T("LANCAMENTO_NOTA", "ava", 1640, 40, "Nota dada pelo árbitro em cada critério.", [["idLancamentoNota", "Long", "PK"], ["lancamento", "Long", "FK"], ["criterio", "Long", "FK"], ["notaAtribuida", "BigDecimal"]]),
+    T("LANCAMENTO_PROIBICAO", "ava", 1640, 280, "Penalidade aplicada a um atleta no lançamento.", [["idLancamentoProibicao", "Long", "PK"], ["lancamento", "Long", "FK"], ["atleta", "Long", "FK"], ["proibicao", "Long", "FK"]], ["Avaliação pode ser lançada sem nenhuma proibição"]),
+    T("AVALIACAO_JOGO", "ava", 1640, 560, "A nota final consolidada de cada atleta no jogo.", [["idAvaliacao", "Long", "PK"], ["jogos", "Long", "FK"], ["atletasId", "Long", "FK"], ["notaFinal", "BigDecimal"]], ["notaFinal = pontos técnicos − penalidades", "Só é gravada quando as 3 notas chegam"]),
+
+    T("CRITERIO", "reg", 2040, 40, "Critérios técnicos avaliados, por modelo de categoria.", [["idCriterio", "Long", "PK"], ["descricao", "String"], ["modelo", "enum"]]),
+    T("PROIBICOES", "reg", 2040, 280, "Proibições com a nota descontada; algumas desclassificam.", [["idProibicao", "Long", "PK"], ["descricao", "String"], ["notaProibicao", "BigDecimal"], ["desclassifica", "Boolean"]])
+  ],
+  edges: [
+    { f: "USUARIOS", t: "ARBITROS", a: "login do árbitro", p: "0..1 : 0..1" },
+    { f: "RODAS", t: "ARBITROS", a: "atua em", p: "1 : N" },
+    { f: "CATEGORIAS", t: "ATLETAS", a: "agrupa", p: "1 : N" },
+    { f: "CATEGORIAS", t: "PREMIACOES", a: "premia", p: "1 : N" },
+    { f: "CATEGORIAS", t: "CHAVEAMENTO", a: "gera fases", p: "1 : N" },
+    { f: "CHAVEAMENTO", t: "JOGOS", a: "contém", p: "1 : N" },
+    { f: "ATLETAS", t: "JOGOS", a: "joga como A ou B", p: "1 : N" },
+    { f: "JOGOS", t: "JOGOS", a: "vencedor avança", p: "0..1 : 0..1" },
+    { f: "JOGOS", t: "LANCAMENTO_AVALIACAO", a: "recebe até 3", p: "1 : N" },
+    { f: "ARBITROS", t: "LANCAMENTO_AVALIACAO", a: "lança", p: "1 : N" },
+    { f: "LANCAMENTO_AVALIACAO", t: "LANCAMENTO_NOTA", a: "notas", p: "1 : N" },
+    { f: "CRITERIO", t: "LANCAMENTO_NOTA", a: "avaliado em", p: "1 : N" },
+    { f: "LANCAMENTO_AVALIACAO", t: "LANCAMENTO_PROIBICAO", a: "penalidades", p: "1 : N" },
+    { f: "PROIBICOES", t: "LANCAMENTO_PROIBICAO", a: "aplicada em", p: "1 : N" },
+    { f: "JOGOS", t: "AVALIACAO_JOGO", a: "consolida por atleta", p: "1 : N" },
+    { f: "JOGOS", t: "RESULTADO_JOGO", a: "resultado", p: "1 : 0..1" },
+    { f: "ATLETAS", t: "HISTORICO_CLASSIFICATORIA", a: "acumula", p: "1 : N" },
+    { f: "PERIODOS_EVENTO", t: "BLOCOS_EVENTO", a: "divide em", p: "1 : N" },
+    { f: "BLOCOS_EVENTO", t: "PROGRAMACAO_BLOCOS_RODAS", a: "usa rodas", p: "1 : N" },
+    { f: "RODAS", t: "PROGRAMACAO_BLOCOS_RODAS", a: "alocada", p: "1 : N" },
+    { f: "PROGRAMACAO_BLOCOS_RODAS", t: "PROGRAMACAO_CATEGORIAS", a: "ordem das categorias", p: "1 : N" },
+    { f: "CATEGORIAS", t: "PROGRAMACAO_CATEGORIAS", a: "programada", p: "1 : N" },
+    { f: "PROGRAMACAO_CATEGORIAS", t: "FASES_PROGRAMACAO", a: "fases", p: "1 : N" }
+  ]
+};
+
+/* Fluxo crítico 4B: POST /avaliacoes/lancar até o telão */
+const SEQ = {
+  parts: [
+    { id: "ARB", name: "Árbitros", sub: "A, B e Geral", actor: true },
+    { id: "SPA", name: "SPA React", sub: "tablet" },
+    { id: "CTL", name: "AvaliacaoJogo", sub: "Controller" },
+    { id: "SVC", name: "AvaliacaoJogo", sub: "ServiceImpl" },
+    { id: "DB", name: "MySQL 8", sub: "banco", db: true },
+    { id: "CON", name: "Consolidacao", sub: "Processor" },
+    { id: "RES", name: "Resultado", sub: "e Jogos Listener" },
+    { id: "MSG", name: "Publicador", sub: "+ RabbitMQ" },
+    { id: "SSE", name: "CanalAoVivo", sub: "SSE" },
+    { id: "TEL", name: "Telão", sub: "e público", actor: true }
+  ],
+  msgs: [
+    { f: "ARB", t: "SPA", k: "sync", txt: "Marca notas e proibições da sua função", why: "Cada um dos 3 árbitros vê só os botões da sua função (Atleta A, Atleta B ou Geral) e lança no tablet." },
+    { f: "SPA", t: "CTL", k: "sync", txt: "POST /api/avaliacoes/lancar (JWT)", why: "A SPA envia o lançamento com o token. A Security Filter Chain só deixa passar o perfil ÁRBITRO." },
+    { f: "CTL", t: "SVC", k: "sync", txt: "lancarAvaliacao(dto, login)", why: "O controller valida o JSON com @Valid e entrega o DTO ao service, onde ficam as regras." },
+    { f: "SVC", t: "DB", k: "sync", txt: "buscarJogoParaAvaliacao + lock do jogo", why: "O jogo é lido com lock: os 3 árbitros podem lançar no mesmo segundo e só o último consolida." },
+    { f: "SVC", t: "SVC", k: "self", txt: "AvaliadorResolver + validators", why: "Confere a roda do árbitro, a função, se o jogo está aberto e se as notas são válidas." },
+    { f: "SVC", t: "DB", k: "sync", txt: "Salva LANCAMENTO_AVALIACAO", why: "A restrição UNIQUE (jogo, função) impede nota duplicada mesmo com duplo toque no tablet." },
+    { f: "SVC", t: "CON", k: "sync", txt: "funcoesPendentes(lancamentos)", why: "Pergunta ao processor quais funções ainda não lançaram neste jogo." },
+    { f: "SVC", t: "SPA", k: "reply", alt: "pend", txt: "Responde as funções pendentes", why: "Ainda falta árbitro: a tela mostra quem já lançou e quem falta. Nada é consolidado." },
+    { f: "CON", t: "CON", k: "self", alt: "last", txt: "NotaFinalCalculator: técnicos − penalidades", why: "Chegou o 3º lançamento. A nota final de cada atleta é a soma técnica menos as penalidades." },
+    { f: "CON", t: "DB", k: "sync", alt: "last", txt: "Grava AVALIACAO_JOGO e finaliza o jogo", why: "A avaliação consolidada é gravada e o jogo trava: nenhuma nota muda depois disso." },
+    { f: "CON", t: "RES", k: "async", alt: "last", txt: "AvaliacaoRealizadaEvent", why: "Um evento de domínio desacopla a avaliação da progressão do torneio." },
+    { f: "RES", t: "DB", k: "sync", alt: "last", txt: "RESULTADO_JOGO, avança vencedor, desempate ou W.O.", why: "O vencedor entra no próximo jogo da árvore. Empate gera um novo jogo; W.O. desclassifica o ausente." },
+    { f: "SVC", t: "SPA", k: "reply", alt: "last", txt: "Responde as avaliações consolidadas", why: "Os 3 tablets recebem o resultado consolidado do jogo." },
+    { f: "SVC", t: "MSG", k: "async", txt: "LancamentoRegistradoEvent (após o commit)", why: "Só depois do commit: se a transação falhar, nenhum painel recebe dado errado." },
+    { f: "MSG", t: "SSE", k: "async", txt: "Publica o id da categoria", why: "O RabbitMQ (fanout) avisa todas as instâncias. Sem broker, a entrega é local e o lançamento nunca falha." },
+    { f: "SSE", t: "TEL", k: "async", txt: "Retrato atualizado (text/event-stream)", why: "O CanalAoVivo monta o retrato da categoria uma vez e transmite ao telão, aos resultados e ao monitoramento." }
+  ]
+};
+
+
+const ICON = {
+  person: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>',
+  system: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg>',
+  container: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
+  component: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+  db: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></svg>',
+  external: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 3.5 5.4 3.5 8.5s-1.1 5.9-3.5 8.5c-2.4-2.6-3.5-5.4-3.5-8.5s1.1-5.9 3.5-8.5z"/></svg>',
+  table: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5v10"/></svg>',
+  zoom: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>',
+  plus: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
+};
+const TYPE_LABEL = { person: "Pessoa", system: "Sistema de software", container: "Container", component: "Componente", db: "Banco de dados", external: "Sistema externo", table: "Tabela" };
+const TYPE_HUE = { person: "var(--c-person)", system: "var(--c-system)", container: "var(--c-container)", component: "var(--c-component)", db: "var(--c-container)", external: "var(--c-external)" };
+const FILTERS_C4 = [
+  { id: "atores", label: "Atores", sw: "var(--c-person)", test: n => n.type === "person" },
+  { id: "internos", label: "Sistemas internos", sw: "var(--c-container)", test: n => ["system", "container", "component"].includes(n.type) },
+  { id: "externos", label: "Sistemas externos", sw: "var(--c-external)", test: n => n.type === "external" },
+  { id: "dados", label: "Bancos de dados", sw: "var(--c-component)", test: n => n.type === "db" }
+];
+const FILTERS_ERD = Object.entries(AREAS).map(([id, a]) => ({ id: "a-" + id, label: a.label, sw: a.hue, test: n => n.area === id }));
+const filtersFor = lv => LEVELS[lv].mode === "erd" ? FILTERS_ERD : FILTERS_C4;
+const nodeHue = d => d.type === "table" ? AREAS[d.area].hue : TYPE_HUE[d.type];
+
+/* ===================== Utilidades de interface ===================== */
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 1800); }
+
+// brilho que segue o mouse nos cards de vidro
+document.addEventListener("pointermove", e => {
+  const el = e.target.closest && e.target.closest(".spotlight");
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--mx", (e.clientX - r.left) + "px");
+  el.style.setProperty("--my", (e.clientY - r.top) + "px");
+}, { passive: true });
+
+// luz do hero
+const heroSpot = $("#heroSpot");
+$("#inicio").addEventListener("pointermove", e => {
+  heroSpot.style.setProperty("--sx", e.clientX + "px");
+  heroSpot.style.setProperty("--sy", (e.clientY + window.scrollY) + "px");
+}, { passive: true });
+
+// título dividido em palavras
+$$("[data-split]").forEach(h => {
+  let i = 0;
+  const wrap = node => {
+    [...node.childNodes].forEach(ch => {
+      if (ch.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        ch.textContent.split(/(\s+)/).forEach(part => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(" ")); return; }
+          const w = document.createElement("span"); w.className = "w";
+          const s = document.createElement("span"); s.textContent = part; s.style.setProperty("--i", i++);
+          w.appendChild(s); frag.appendChild(w);
+        });
+        ch.replaceWith(frag);
+      } else if (ch.nodeType === 1) {
+        if (ch.classList.contains("g")) { ch.classList.remove("g"); wrap(ch); $$(".w", ch).forEach(w => w.classList.add("g")); }
+        else wrap(ch);
+      }
+    });
+  };
+  wrap(h);
+  requestAnimationFrame(() => requestAnimationFrame(() => h.classList.add("is-in")));
+});
+
+// revelação e contadores ao rolar
+const io = new IntersectionObserver(entries => entries.forEach(en => {
+  if (!en.isIntersecting) return;
+  en.target.classList.add("is-in");
+  $$("[data-count]", en.target).concat(en.target.matches("[data-count]") ? [en.target] : []).forEach(countUp);
+  io.unobserve(en.target);
+}), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+$$("[data-reveal]").forEach(el => io.observe(el));
+function countUp(el) {
+  if (el.dataset.done) return; el.dataset.done = 1;
+  const to = +el.dataset.count, pre = el.dataset.prefix || "", suf = el.dataset.suffix || "";
+  const fmt = v => pre + Math.round(v).toLocaleString("pt-BR") + suf;
+  if (reduce || to === 0) { el.textContent = fmt(to); return; }
+  const t0 = performance.now(), dur = 1400;
+  const tick = now => { const p = Math.min(1, (now - t0) / dur); el.textContent = fmt(to * (1 - Math.pow(1 - p, 4))); if (p < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}
+
+// barra de progresso, navegação que some ao descer e link ativo
+const nav = $("#nav"), prog = $("#progress");
+let lastY = window.scrollY;
+function onScroll() {
+  const y = window.scrollY, h = document.documentElement.scrollHeight - innerHeight;
+  prog.style.transform = `scaleX(${h > 0 ? y / h : 0})`;
+  nav.classList.toggle("is-scrolled", y > 20);
+  nav.classList.toggle("is-hidden", y > 400 && y > lastY + 4 && !panel.classList.contains("open"));
+  if (y < lastY - 4) nav.classList.remove("is-hidden");
+  lastY = y;
+}
+window.addEventListener("scroll", onScroll, { passive: true });
+const secIo = new IntersectionObserver(entries => entries.forEach(en => {
+  if (en.isIntersecting) $$(".nav__links a").forEach(a => a.classList.toggle("is-active", a.getAttribute("href") === "#" + en.target.id));
+}), { rootMargin: "-45% 0px -50% 0px" });
+$$("main section[id]").forEach(s => secIo.observe(s));
+
+// registro ao vivo do hero
+const LOG = [
+  ["POST", "/api/avaliacoes/lancar", "Árb. A · jogo 14", "201"],
+  ["POST", "/api/avaliacoes/lancar", "Árb. B · jogo 14", "201"],
+  ["POST", "/api/avaliacoes/lancar", "Geral · jogo 14", "consolidado"],
+  ["SSE", "retrato categoria 7", "telão + 200 celulares", "enviado"],
+  ["POST", "/api/avaliacoes/lancar", "Árb. A · jogo 15 (roda 2)", "201"],
+  ["EVT", "AvaliacaoRealizadaEvent", "vencedor avança", "ok"]
+];
+let li = 0;
+const liveLog = $("#liveLog");
+function pushLog() {
+  const [m, p, who, st] = LOG[li++ % LOG.length];
+  const d = document.createElement("div");
+  d.innerHTML = `<b>${m}</b><span>${esc(p)}</span><span>${esc(who)}</span><span class="ok">${esc(st)}</span>`;
+  liveLog.prepend(d);
+  while (liveLog.children.length > 3) liveLog.lastChild.remove();
+}
+pushLog(); pushLog();
+if (!reduce) setInterval(pushLog, 2400);
+
+/* ===================== Explorador C4 ===================== */
 const viewport = $("#viewport"), stage = $("#stage"), svg = $("#edges"), edgeLayer = $("#edgeLayer");
 const nodeLayer = $("#nodeLayer"), labelLayer = $("#labelLayer");
-const panel = $("#panel"), scrim = $("#scrim");
+const panel = $("#panel"), scrim = $("#scrim"), minimap = $("#minimap");
 const state = { level: 1, scale: 1, tx: 0, ty: 0, hidden: new Set(), selected: null, nodes: {}, edges: [] };
-const store = {
-  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento */ } }
-};
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-/* ===================== Tema ===================== */
-const root = document.documentElement;
-const savedTheme = store.get("c4-theme");
-if (savedTheme === "light") root.setAttribute("data-theme", "light");
-$("#themeBtn").addEventListener("click", toggleTheme);
-function toggleTheme() {
-  const light = root.getAttribute("data-theme") !== "light";
-  if (light) root.setAttribute("data-theme", "light"); else root.removeAttribute("data-theme");
-  store.set("c4-theme", light ? "light" : "dark");
-}
-
-/* ===================== Abas ===================== */
-const tabs = [...document.querySelectorAll(".levels button")];
+const tabs = $$(".levels button");
 tabs.forEach(b => b.addEventListener("click", () => goLevel(+b.dataset.level)));
 function movePill() {
-  const active = tabs.find(b => b.getAttribute("aria-selected") === "true");
+  const a = tabs.find(b => b.getAttribute("aria-selected") === "true");
   const pill = $(".levels .pill");
-  pill.style.left = active.offsetLeft + "px";
-  pill.style.width = active.offsetWidth + "px";
+  pill.style.left = a.offsetLeft + "px"; pill.style.width = a.offsetWidth + "px";
 }
 
-/* ===================== Filtros ===================== */
 function renderFilters() {
   const L = LEVELS[state.level];
-  $("#filters").innerHTML = FILTERS.map(f => {
-    const ct = L.nodes.filter(n => f.types.includes(n.type)).length;
-    return `<button class="chip" data-f="${f.id}" aria-pressed="${!state.hidden.has(f.id)}" ${ct ? "" : "disabled"} style="--sw:${f.sw}">
-      <i class="sw"></i>${f.label}<span class="ct">${ct}</span></button>`;
+  $("#filters").innerHTML = filtersFor(state.level).map(f => {
+    const ct = L.nodes.filter(f.test).length;
+    return `<button class="chip" data-f="${f.id}" aria-pressed="${!state.hidden.has(f.id)}" ${ct ? "" : "disabled"} style="--sw:${f.sw}"><i class="sw"></i>${f.label}<span class="ct">${ct}</span></button>`;
   }).join("");
-  $("#filters").querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+  $$("#filters .chip").forEach(c => c.addEventListener("click", () => {
     const id = c.dataset.f;
     state.hidden.has(id) ? state.hidden.delete(id) : state.hidden.add(id);
     c.setAttribute("aria-pressed", !state.hidden.has(id));
     applyFilters();
   }));
 }
-function groupOf(type) { return FILTERS.find(f => f.types.includes(type)).id; }
+function isHidden(d) { return filtersFor(state.level).some(f => state.hidden.has(f.id) && f.test(d)); }
 function applyFilters() {
-  Object.values(state.nodes).forEach(n => n.el.classList.toggle("filtered", state.hidden.has(groupOf(n.d.type))));
+  Object.values(state.nodes).forEach(n => n.el.classList.toggle("filtered", isHidden(n.d)));
   state.edges.forEach(e => {
-    const off = state.hidden.has(groupOf(state.nodes[e.f].d.type)) || state.hidden.has(groupOf(state.nodes[e.t].d.type));
+    const off = isHidden(state.nodes[e.f].d) || isHidden(state.nodes[e.t].d);
     [e.path, e.label].forEach(x => x.classList.toggle("filtered", off));
   });
+  drawMinimap();
 }
 
-/* ===================== Renderização do nível ===================== */
+function renderLegend() {
+  const erd = LEVELS[state.level].mode === "erd";
+  $("#legend").innerHTML = erd
+    ? `<div class="grp"><span class="t">Áreas</span>${Object.values(AREAS).map(a => `<span class="it"><i class="sw" style="--sw:${a.hue}"></i>${a.label}</span>`).join("")}</div>
+       <div class="grp"><span class="t">Chaves</span><span class="it"><b class="k-PK" style="font-size:.66rem;padding:.05rem .35rem;border-radius:4px">PK</b>primária</span><span class="it"><b class="k-FK" style="font-size:.66rem;padding:.05rem .35rem;border-radius:4px">FK</b>estrangeira</span><span class="it"><b class="k-UK" style="font-size:.66rem;padding:.05rem .35rem;border-radius:4px">UK</b>única</span>
+       <span class="it"><svg width="44" height="14"><path d="M8 2V12M12 2V12" stroke="rgba(219,234,254,.6)" stroke-width="1.4"/><line x1="12" y1="7" x2="32" y2="7" stroke="var(--edge)" stroke-width="1.6"/><path d="M42 1L32 7L42 13M32 1V13" fill="none" stroke="rgba(219,234,254,.6)" stroke-width="1.4"/></svg>um para muitos</span></div>`
+    : `<div class="grp"><span class="t">Elementos</span>
+        <span class="it"><i class="sw person" style="--sw: var(--c-person)"></i>Pessoa</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-system)"></i>Sistema em foco</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-container)"></i>Container</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-component)"></i>Componente</span>
+        <span class="it"><i class="sw db" style="--sw: var(--c-container)"></i>Banco de dados</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-external)"></i>Externo</span>
+        <span class="it"><i class="sw opt" style="--sw: var(--c-external)"></i>Externo opcional</span>
+        <span class="it"><i class="sw bd"></i>Fronteira</span></div>
+       <div class="grp"><span class="t">Relações</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge)" stroke-width="1.8"/></svg>Síncrona (HTTPS, REST, SQL)</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge)" stroke-width="1.8" stroke-dasharray="6 5"/></svg>Assíncrona (AMQP, SSE, evento)</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge-opt)" stroke-width="1.8" stroke-dasharray="2 5"/></svg>Opcional</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--out)" stroke-width="2.4"/></svg>Saída</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--in)" stroke-width="2.4"/></svg>Entrada</span></div>`;
+}
+
+function nodeHTML(d) {
+  if (d.type === "table") {
+    const rows = d.fields.map(([n, t, k]) => `<li><span class="fn">${k ? `<b class="k-${k}">${k}</b>` : ""}${esc(n)}</span><span class="ty">${esc(t.split(" ")[0])}</span></li>`).join("");
+    return `<div class="th"><i></i><h4>${esc(d.title)}</h4><span>${AREAS[d.area].label}</span></div><ul>${rows}</ul>`;
+  }
+  const drill = d.drill ? `<span class="drill" data-drill="${d.drill}" title="Descer ao Nível ${d.drill}" aria-label="Descer ao Nível ${d.drill}">${ICON.zoom}</span>` : "";
+  return `<div class="top"><span class="ico">${ICON[d.type]}</span><span class="badge">${d.optional ? "Externo opcional" : TYPE_LABEL[d.type]}</span>${drill}</div>
+    <h4>${esc(d.title)}</h4><div class="tech">[${esc(d.tech)}]</div><p>${esc(d.desc)}</p>`;
+}
+
 function render() {
   const L = LEVELS[state.level];
   const [W, H] = L.size;
   stage.style.width = W + "px"; stage.style.height = H + "px";
   svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   nodeLayer.innerHTML = ""; labelLayer.innerHTML = ""; edgeLayer.innerHTML = "";
-  stage.querySelectorAll(".boundary").forEach(b => b.remove());
+  $$(".boundary", stage).forEach(b => b.remove());
   state.nodes = {}; state.edges = [];
-
   L.nodes.forEach(d => {
     const el = document.createElement("button");
     el.className = `node t-${d.type}${d.optional ? " optional" : ""}`;
-    el.style.left = d.x + "px"; el.style.top = d.y + "px"; el.style.width = d.w + "px";
+    Object.assign(el.style, { left: d.x + "px", top: d.y + "px", width: d.w + "px" });
+    if (d.type === "table") el.style.setProperty("--area", AREAS[d.area].hue);
     el.dataset.id = d.id;
     el.setAttribute("aria-label", `${d.title}, ${TYPE_LABEL[d.type]}. Abrir detalhes.`);
-    const drill = d.drill ? `<span class="drill" role="button" tabindex="-1" data-drill="${d.drill}" title="Entrar no Nível ${d.drill}" aria-label="Entrar no Nível ${d.drill}">${ICON.zoom}</span>` : "";
-    el.innerHTML = `<div class="top"><span class="ico">${ICON[d.type]}</span><span class="badge">${d.optional ? "Externo opcional" : TYPE_LABEL[d.type]}</span>${drill}</div>
-      <h3>${esc(d.title)}</h3><div class="tech">[${esc(d.tech)}]</div><p>${esc(d.desc)}</p>`;
+    el.innerHTML = nodeHTML(d);
     nodeLayer.appendChild(el);
     state.nodes[d.id] = { d, el };
   });
-
-  // medidas reais (o texto define a altura)
-  Object.values(state.nodes).forEach(n => {
-    n.box = { x: n.d.x, y: n.d.y, w: n.el.offsetWidth, h: n.el.offsetHeight };
-  });
-
-  // fronteiras calculadas a partir dos membros
+  Object.values(state.nodes).forEach(n => { n.box = { x: n.d.x, y: n.d.y, w: n.el.offsetWidth, h: n.el.offsetHeight }; });
   (L.boundaries || []).forEach(b => {
-    const boxes = b.members.map(id => state.nodes[id].box);
-    const x1 = Math.min(...boxes.map(r => r.x)) - b.pad, y1 = Math.min(...boxes.map(r => r.y)) - b.pad - 8;
-    const x2 = Math.max(...boxes.map(r => r.x + r.w)) + b.pad, y2 = Math.max(...boxes.map(r => r.y + r.h)) + b.pad;
+    const bx = b.members.map(id => state.nodes[id].box);
+    const x1 = Math.min(...bx.map(r => r.x)) - b.pad, y1 = Math.min(...bx.map(r => r.y)) - b.pad - 8;
+    const x2 = Math.max(...bx.map(r => r.x + r.w)) + b.pad, y2 = Math.max(...bx.map(r => r.y + r.h)) + b.pad;
     const el = document.createElement("div");
     el.className = "boundary";
     Object.assign(el.style, { left: x1 + "px", top: y1 + "px", width: (x2 - x1) + "px", height: (y2 - y1) + "px" });
     el.innerHTML = `<span class="bl">${esc(b.label)}<i>${esc(b.tag)}</i></span>`;
     stage.insertBefore(el, svg);
   });
-
   buildEdges(L);
   bindNodes();
-  renderFilters();
-  applyFilters();
-  updateIntro();
+  renderFilters(); renderLegend(); applyFilters(); updateInfo();
 }
 
-/* ---------- Setas: portas distribuídas por lado e curvas de Bézier ---------- */
-function sidePoint(box, side, frac) {
-  const { x, y, w, h } = box;
-  if (side === "t") return [x + w * frac, y];
-  if (side === "b") return [x + w * frac, y + h];
-  if (side === "l") return [x, y + h * frac];
-  return [x + w, y + h * frac];
-}
+/* ---------- Setas ---------- */
 const NORMAL = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] };
-function center(b) { return [b.x + b.w / 2, b.y + b.h / 2]; }
-
+const center = b => [b.x + b.w / 2, b.y + b.h / 2];
+function sidePoint(b, side, f) {
+  if (side === "t") return [b.x + b.w * f, b.y];
+  if (side === "b") return [b.x + b.w * f, b.y + b.h];
+  if (side === "l") return [b.x, b.y + b.h * f];
+  return [b.x + b.w, b.y + b.h * f];
+}
+function autoSides(A, B) {
+  const [ax, ay] = center(A), [bx, by] = center(B);
+  if (Math.abs(ax - bx) < (A.w + B.w) / 2) return ay < by ? ["b", "t"] : ["t", "b"];
+  return ax < bx ? ["r", "l"] : ["l", "r"];
+}
+function overlap(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
 function buildEdges(L) {
-  // agrupa as pontas por (nó, lado) para espaçar as portas
+  const erd = L.mode === "erd";
+  const list = L.edges.map((e, i) => {
+    const A = state.nodes[e.f].box, B = state.nodes[e.t].box;
+    if (e.f === e.t) return { ...e, i, self: true };
+    const [fs, ts] = e.fs && e.ts ? [e.fs, e.ts] : autoSides(A, B);
+    return { ...e, i, fs, ts };
+  });
   const ports = {};
-  L.edges.forEach((e, i) => {
+  list.filter(e => !e.self).forEach(e => {
     [["f", e.f, e.fs, e.t], ["t", e.t, e.ts, e.f]].forEach(([end, id, side, other]) => {
-      const key = id + ":" + side;
-      (ports[key] = ports[key] || []).push({ i, end, other, side });
+      (ports[id + ":" + side] = ports[id + ":" + side] || []).push({ i: e.i, end, other, side });
     });
   });
   const frac = {};
-  Object.values(ports).forEach(list => {
-    const horiz = list[0].side === "t" || list[0].side === "b";
-    list.sort((a, b) => {
-      const ca = center(state.nodes[a.other].box), cb = center(state.nodes[b.other].box);
-      return horiz ? ca[0] - cb[0] : ca[1] - cb[1];
-    });
-    const n = list.length;
-    list.forEach((p, k) => {
-      const f = n === 1 ? 0.5 : 0.22 + (0.56 * k) / (n - 1);
-      frac[p.i + p.end] = f;
-    });
+  Object.values(ports).forEach(ps => {
+    const horiz = ps[0].side === "t" || ps[0].side === "b";
+    ps.sort((a, b) => { const ca = center(state.nodes[a.other].box), cb = center(state.nodes[b.other].box); return horiz ? ca[0] - cb[0] : ca[1] - cb[1]; });
+    ps.forEach((p, k) => { frac[p.i + p.end] = ps.length === 1 ? 0.5 : 0.22 + (0.56 * k) / (ps.length - 1); });
   });
-
-  const placed = [];
-  const nodeRects = Object.values(state.nodes).map(n => n.box);
-
-  L.edges.forEach((e, i) => {
-    const A = state.nodes[e.f].box, B = state.nodes[e.t].box;
-    const p0 = sidePoint(A, e.fs, frac[i + "f"]), p3 = sidePoint(B, e.ts, frac[i + "t"]);
-    const n0 = NORMAL[e.fs], n3 = NORMAL[e.ts];
-    // recuo pequeno para a ponta da seta não encostar no card
-    const gap = 3;
-    const s = [p0[0] + n0[0] * gap, p0[1] + n0[1] * gap];
-    const t = [p3[0] + n3[0] * (gap + 4), p3[1] + n3[1] * (gap + 4)];
-    const dist = Math.hypot(t[0] - s[0], t[1] - s[1]);
-    const k = Math.max(36, Math.min(dist * 0.45, 220));
-    const c1 = [s[0] + n0[0] * k, s[1] + n0[1] * k], c2 = [t[0] + n3[0] * k, t[1] + n3[1] * k];
+  const placed = [], rects = Object.values(state.nodes).map(n => n.box);
+  const ns = "http://www.w3.org/2000/svg";
+  list.forEach(e => {
+    let s, c1, c2, t;
+    if (e.self) {
+      const b = state.nodes[e.f].box;
+      s = [b.x + b.w + 2, b.y + b.h * 0.3]; t = [b.x + b.w + 6, b.y + b.h * 0.7];
+      c1 = [s[0] + 90, s[1] - 10]; c2 = [t[0] + 90, t[1] + 10];
+    } else {
+      const A = state.nodes[e.f].box, B = state.nodes[e.t].box;
+      const p0 = sidePoint(A, e.fs, frac[e.i + "f"]), p3 = sidePoint(B, e.ts, frac[e.i + "t"]);
+      const n0 = NORMAL[e.fs], n3 = NORMAL[e.ts];
+      s = [p0[0] + n0[0] * 3, p0[1] + n0[1] * 3];
+      const back = erd ? 2 : 7;
+      t = [p3[0] + n3[0] * back, p3[1] + n3[1] * back];
+      const k = Math.max(36, Math.min(Math.hypot(t[0] - s[0], t[1] - s[1]) * 0.45, 220));
+      c1 = [s[0] + n0[0] * k, s[1] + n0[1] * k]; c2 = [t[0] + n3[0] * k, t[1] + n3[1] * k];
+    }
     const d = `M${s[0].toFixed(1)} ${s[1].toFixed(1)} C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${t[0].toFixed(1)} ${t[1].toFixed(1)}`;
-
-    const ns = "http://www.w3.org/2000/svg";
     const path = document.createElementNS(ns, "path");
     path.setAttribute("d", d);
-    path.setAttribute("class", `edge ${e.k || "sync"}${e.both ? " both" : ""}`);
+    path.setAttribute("class", `edge ${erd ? "erd" : (e.k || "sync")}${e.both ? " both" : ""}`);
     const hit = document.createElementNS(ns, "path");
     hit.setAttribute("d", d); hit.setAttribute("class", "ehit");
-    edgeLayer.appendChild(path); edgeLayer.appendChild(hit);
-
+    edgeLayer.append(path, hit);
     const label = document.createElement("div");
-    label.className = "elabel";
-    label.innerHTML = `<span>${esc(e.a)}</span><span class="p">[${esc(e.p)}]</span>`;
+    label.className = "elabel" + (erd ? " erd" : "");
+    label.innerHTML = erd ? `<span class="a">${esc(e.a)}</span><span class="p">${esc(e.p)}</span>` : `<span>${esc(e.a)}</span><span class="p">[${esc(e.p)}]</span>`;
     labelLayer.appendChild(label);
-
-    // escolhe a posição do rótulo ao longo da curva sem colidir com cards e outros rótulos
     const lw = label.offsetWidth, lh = label.offsetHeight;
-    const bez = tt => {
-      const u = 1 - tt;
-      return [
-        u*u*u*s[0] + 3*u*u*tt*c1[0] + 3*u*tt*tt*c2[0] + tt*tt*tt*t[0],
-        u*u*u*s[1] + 3*u*u*tt*c1[1] + 3*u*tt*tt*c2[1] + tt*tt*tt*t[1]
-      ];
-    };
-    const cands = [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8];
+    const bez = tt => { const u = 1 - tt; return [u*u*u*s[0] + 3*u*u*tt*c1[0] + 3*u*tt*tt*c2[0] + tt*tt*tt*t[0], u*u*u*s[1] + 3*u*u*tt*c1[1] + 3*u*tt*tt*c2[1] + tt*tt*tt*t[1]]; };
     let best = null, bestScore = Infinity;
-    for (const tt of cands) {
+    for (const tt of [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8]) {
       const [cx, cy] = bez(tt);
       const r = { x: cx - lw / 2 - 4, y: cy - lh / 2 - 4, w: lw + 8, h: lh + 8 };
-      let score = 0;
-      nodeRects.forEach(nr => { score += overlap(r, nr) * 3; });
-      placed.forEach(pr => { score += overlap(r, pr) * 2; });
-      score += Math.abs(tt - 0.5) * 40;
-      if (score < bestScore) { bestScore = score; best = { cx, cy, r }; }
-      if (score <= Math.abs(tt - 0.5) * 40) break;
+      let sc = Math.abs(tt - 0.5) * 40;
+      rects.forEach(nr => { sc += overlap(r, nr) * 3; });
+      placed.forEach(pr => { sc += overlap(r, pr) * 2; });
+      if (sc < bestScore) { bestScore = sc; best = { cx, cy, r }; }
+      if (sc <= Math.abs(tt - 0.5) * 40) break;
     }
     placed.push(best.r);
     label.style.left = best.cx + "px"; label.style.top = best.cy + "px";
-
-    const rec = { ...e, i, path, hit, label };
+    const rec = { ...e, path, hit, label, d };
     state.edges.push(rec);
     const over = () => highlightEdge(rec, true), out = () => highlightEdge(rec, false);
     hit.addEventListener("pointerenter", over); hit.addEventListener("pointerleave", out);
     label.addEventListener("pointerenter", over); label.addEventListener("pointerleave", out);
   });
 }
-function overlap(a, b) {
-  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
-  return w > 0 && h > 0 ? w * h : 0;
-}
 
-/* ---------- Destaque de conexões ---------- */
+/* ---------- Destaque e pulsos ao longo das setas ---------- */
+let pulses = [];
+function clearPulses() { pulses.forEach(p => p.remove()); pulses = []; }
+function addPulse(e, reverse) {
+  if (reduce) return;
+  const ns = "http://www.w3.org/2000/svg";
+  const c = document.createElementNS(ns, "circle");
+  c.setAttribute("r", "4"); c.setAttribute("class", "pulse-dot");
+  if (reverse) c.style.fill = "var(--in)";
+  const am = document.createElementNS(ns, "animateMotion");
+  am.setAttribute("dur", "1.6s"); am.setAttribute("repeatCount", "indefinite"); am.setAttribute("path", e.d);
+  if (reverse) { am.setAttribute("keyPoints", "0;1"); am.setAttribute("keyTimes", "0;1"); }
+  c.appendChild(am); edgeLayer.appendChild(c); pulses.push(c);
+}
 function clearHl() {
   stage.classList.remove("focus");
-  stage.querySelectorAll(".hl,.nb,.e-in,.e-out").forEach(x => x.classList.remove("hl", "nb", "e-in", "e-out"));
+  $$(".hl,.nb,.e-in,.e-out", stage).forEach(x => x.classList.remove("hl", "nb", "e-in", "e-out"));
+  clearPulses();
 }
 function highlightNode(id) {
   clearHl();
-  if (!id) return;
+  if (!id || !state.nodes[id]) return;
   stage.classList.add("focus");
   state.nodes[id].el.classList.add("hl");
   state.edges.forEach(e => {
@@ -1108,6 +1510,7 @@ function highlightNode(id) {
       const cls = e.f === id ? "e-out" : "e-in";
       e.path.classList.add(cls); e.label.classList.add(cls);
       state.nodes[e.f === id ? e.t : e.f].el.classList.add("nb");
+      addPulse(e, cls === "e-in");
     }
   });
 }
@@ -1118,65 +1521,72 @@ function highlightEdge(e, on) {
   stage.classList.add("focus");
   e.path.classList.add("e-out"); e.label.classList.add("e-out");
   state.nodes[e.f].el.classList.add("hl"); state.nodes[e.t].el.classList.add("nb");
+  addPulse(e);
 }
-
 function bindNodes() {
   Object.values(state.nodes).forEach(({ d, el }) => {
-    el.addEventListener("pointerenter", () => { if (!dragging) highlightNode(d.id); });
+    el.addEventListener("pointerenter", ev => { if (!dragging && ev.pointerType !== "touch") highlightNode(d.id); });
     el.addEventListener("pointerleave", () => { if (!dragging) state.selected ? highlightNode(state.selected) : clearHl(); });
     el.addEventListener("focus", () => highlightNode(d.id));
-    el.addEventListener("blur", () => state.selected ? highlightNode(state.selected) : clearHl());
     el.addEventListener("click", ev => {
       if (moved) return;
       const dr = ev.target.closest("[data-drill]");
-      if (dr) { ev.stopPropagation(); goLevel(+dr.dataset.drill, d.id); return; }
+      if (dr) { ev.stopPropagation(); goLevel(+dr.dataset.drill, { from: d.id }); return; }
       openPanel(d.id);
     });
-    el.addEventListener("dblclick", () => { if (d.drill) goLevel(d.drill, d.id); });
+    el.addEventListener("dblclick", () => { if (d.drill) goLevel(d.drill, { from: d.id }); });
   });
 }
 
-/* ===================== Cabeçalho e trilha ===================== */
-function updateIntro() {
+/* ---------- Cabeçalho do nível ---------- */
+const TRAIL = [[1, "SISJOGOS"], [2, "Containers"], [3, "sisjogos-api"], [4, "Modelo de dados"]];
+function updateInfo() {
   const L = LEVELS[state.level];
-  $("#eyebrow").textContent = L.eyebrow;
-  $("#lvTitle").innerHTML = esc(L.title);
+  $("#lvTitle").textContent = L.title;
   $("#lvScope").textContent = L.scope;
-  const trail = [[1, "SISJOGOS"], [2, "Containers"], [3, "sisjogos-api"]].slice(0, state.level);
-  $("#crumbs").innerHTML = trail.map(([lv, name], i) => i === trail.length - 1
-    ? `<span class="cur">${name}</span>`
-    : `<button data-lv="${lv}">${name}</button><span aria-hidden="true">›</span>`).join("");
-  $("#crumbs").querySelectorAll("button").forEach(b => b.addEventListener("click", () => goLevel(+b.dataset.lv)));
+  const trail = TRAIL.slice(0, state.level);
+  $("#crumbs").innerHTML = `<span style="color:var(--primary-hi);font-family:var(--f-mono);font-size:.74rem;margin-right:.3rem">${esc(L.eyebrow)}</span>` + trail.map(([lv, name], i) => i === trail.length - 1
+    ? `<span class="cur">${name}</span>` : `<button data-lv="${lv}">${name}</button><span aria-hidden="true">›</span>`).join("");
+  $$("#crumbs button").forEach(b => b.addEventListener("click", () => goLevel(+b.dataset.lv)));
   tabs.forEach(b => b.setAttribute("aria-selected", +b.dataset.level === state.level));
   movePill();
 }
 
-/* ===================== Zoom e arraste ===================== */
-const MIN = 0.25, MAX = 2.2;
+/* ---------- Zoom, arraste e minimapa ---------- */
+const MIN = 0.18, MAX = 2.2;
 function apply() {
   stage.style.transform = `translate(${state.tx}px, ${state.ty}px) scale(${state.scale})`;
   $("#zVal").textContent = Math.round(state.scale * 100) + "%";
+  const [W, H] = LEVELS[state.level].size, vw = viewport.clientWidth, vh = viewport.clientHeight, s = state.scale;
+  minimap.classList.toggle("show", state.tx < -2 || state.ty < -2 || state.tx + W * s > vw + 2 || state.ty + H * s > vh + 2);
+  updateMiniView();
 }
+function animateNext() { stage.classList.add("anim"); setTimeout(() => stage.classList.remove("anim"), 560); }
 function fit(animate) {
   const [W, H] = LEVELS[state.level].size;
-  const vw = viewport.clientWidth, vh = viewport.clientHeight, pad = 28;
-  state.scale = Math.min((vw - pad * 2) / W, (vh - pad * 2) / H, 1.15);
-  // no celular, abre num zoom legível e centralizado; o resto se vê arrastando
+  const vw = viewport.clientWidth, vh = viewport.clientHeight, pad = 24;
+  state.scale = Math.min((vw - pad * 2) / W, (vh - pad * 2) / H, 1.1);
   if (vw < 640) state.scale = Math.max(state.scale, 0.42);
-  state.tx = (vw - W * state.scale) / 2;
-  state.ty = (vh - H * state.scale) / 2;
-  if (animate) { stage.classList.add("anim"); setTimeout(() => stage.classList.remove("anim"), 480); }
+  state.tx = (vw - W * state.scale) / 2; state.ty = Math.max(pad, (vh - H * state.scale) / 2);
+  if (vw < 640) state.ty = pad;
+  if (animate) animateNext();
   apply();
 }
-function zoomAt(factor, px, py, animate) {
-  const ns = Math.min(MAX, Math.max(MIN, state.scale * factor));
-  const k = ns / state.scale;
+function zoomAt(f, px, py, animate) {
+  const nsc = Math.min(MAX, Math.max(MIN, state.scale * f)), k = nsc / state.scale;
   if (px === undefined) { px = viewport.clientWidth / 2; py = viewport.clientHeight / 2; }
-  state.tx = px - (px - state.tx) * k;
-  state.ty = py - (py - state.ty) * k;
-  state.scale = ns;
-  if (animate) { stage.classList.add("anim"); setTimeout(() => stage.classList.remove("anim"), 480); }
+  state.tx = px - (px - state.tx) * k; state.ty = py - (py - state.ty) * k; state.scale = nsc;
+  if (animate) animateNext();
   apply();
+}
+function focusNode(id, animate) {
+  const n = state.nodes[id]; if (!n) return;
+  const [cx, cy] = center(n.box);
+  state.scale = Math.max(state.scale, Math.min(0.95, viewport.clientWidth / (n.box.w * 3)));
+  state.tx = viewport.clientWidth / 2 - cx * state.scale; state.ty = viewport.clientHeight / 2 - cy * state.scale;
+  if (animate) animateNext();
+  apply();
+  n.el.classList.remove("pulse"); void n.el.offsetWidth; n.el.classList.add("pulse");
 }
 $("#zIn").addEventListener("click", () => zoomAt(1.2, undefined, undefined, true));
 $("#zOut").addEventListener("click", () => zoomAt(1 / 1.2, undefined, undefined, true));
@@ -1188,18 +1598,43 @@ viewport.addEventListener("wheel", ev => {
   zoomAt(Math.exp(-ev.deltaY * 0.0022), ev.clientX - r.left, ev.clientY - r.top);
 }, { passive: false });
 
-let dragging = false, moved = false;
+let MM = { k: 1, w: 0, h: 0 };
+function drawMinimap() {
+  const [W, H] = LEVELS[state.level].size;
+  const k = 150 / W; MM = { k, w: 150, h: H * k };
+  minimap.style.width = MM.w + "px"; minimap.style.height = MM.h + "px";
+  minimap.innerHTML = Object.values(state.nodes).map(n => n.el.classList.contains("filtered") ? "" :
+    `<i style="left:${n.box.x * k}px;top:${n.box.y * k}px;width:${n.box.w * k}px;height:${n.box.h * k}px;--mc:${nodeHue(n.d)}"></i>`).join("") + `<div class="mm-view"></div>`;
+  updateMiniView();
+}
+function updateMiniView() {
+  const v = $(".mm-view", minimap); if (!v) return;
+  const k = MM.k / state.scale;
+  const x = -state.tx * k, y = -state.ty * k, w = viewport.clientWidth * k, h = viewport.clientHeight * k;
+  const cx = Math.max(0, x), cy = Math.max(0, y);
+  Object.assign(v.style, { left: cx + "px", top: cy + "px", width: Math.max(8, Math.min(MM.w, x + w) - cx) + "px", height: Math.max(8, Math.min(MM.h, y + h) - cy) + "px" });
+}
+function miniJump(ev) {
+  const r = minimap.getBoundingClientRect();
+  const x = (ev.clientX - r.left) / MM.k, y = (ev.clientY - r.top) / MM.k;
+  state.tx = viewport.clientWidth / 2 - x * state.scale; state.ty = viewport.clientHeight / 2 - y * state.scale;
+  apply();
+}
+minimap.addEventListener("pointerdown", ev => {
+  ev.stopPropagation(); miniJump(ev);
+  const mv = e => miniJump(e), up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
+  window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
+});
+
+let dragging = false, moved = false, start = null, pinch = null;
 const pointers = new Map();
-let start = null, pinch = null;
 viewport.addEventListener("pointerdown", ev => {
-  if (ev.button !== 0 && ev.pointerType === "mouse") return;
+  if (ev.pointerType === "mouse" && ev.button !== 0) return;
   pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
   moved = false;
-  if (pointers.size === 1) {
-    start = { x: ev.clientX, y: ev.clientY, tx: state.tx, ty: state.ty, id: ev.pointerId };
-  } else if (pointers.size === 2) {
-    const [a, b] = [...pointers.values()];
-    const r = viewport.getBoundingClientRect();
+  if (pointers.size === 1) start = { x: ev.clientX, y: ev.clientY, tx: state.tx, ty: state.ty, id: ev.pointerId };
+  else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()], r = viewport.getBoundingClientRect();
     pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: state.scale, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top };
   }
 });
@@ -1208,118 +1643,106 @@ window.addEventListener("pointermove", ev => {
   pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
   if (pointers.size === 2 && pinch) {
     const [a, b] = [...pointers.values()];
-    const d = Math.hypot(a.x - b.x, a.y - b.y);
-    zoomAt((pinch.s * d / pinch.d) / state.scale, pinch.cx, pinch.cy);
-    moved = true;
-    return;
+    zoomAt((pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d) / state.scale, pinch.cx, pinch.cy);
+    moved = true; return;
   }
   if (!start || ev.pointerId !== start.id) return;
   const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
   if (!moved && Math.hypot(dx, dy) < 5) return;
   if (!moved) { moved = true; dragging = true; viewport.classList.add("grabbing"); clearHl(); }
-  state.tx = start.tx + dx; state.ty = start.ty + dy;
-  apply();
+  state.tx = start.tx + dx; state.ty = start.ty + dy; apply();
 });
 function endPointer(ev) {
   pointers.delete(ev.pointerId);
   if (pointers.size < 2) pinch = null;
-  if (pointers.size === 0) {
-    start = null;
-    viewport.classList.remove("grabbing");
-    setTimeout(() => { dragging = false; moved = false; }, 0);
-  }
+  if (!pointers.size) { start = null; viewport.classList.remove("grabbing"); setTimeout(() => { dragging = false; moved = false; }, 0); }
 }
 window.addEventListener("pointerup", endPointer);
 window.addEventListener("pointercancel", endPointer);
-viewport.addEventListener("click", ev => {
-  if (!moved && !ev.target.closest(".node") && !ev.target.closest(".elabel")) closePanel();
-});
+viewport.addEventListener("click", ev => { if (!moved && !ev.target.closest(".node,.elabel")) closePanel(); });
 
-/* ===================== Navegação entre níveis ===================== */
+/* ---------- Tela cheia ---------- */
+const explorer = $("#explorer");
+$("#exFull").addEventListener("click", toggleFull);
+function toggleFull() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (explorer.requestFullscreen) explorer.requestFullscreen().catch(() => toast("Tela cheia indisponível neste navegador"));
+  else toast("Tela cheia indisponível neste navegador");
+}
+document.addEventListener("fullscreenchange", () => setTimeout(() => { movePill(); fit(false); }, 80));
+
+/* ---------- Troca de nível ---------- */
 let busy = false;
-function goLevel(n, fromId) {
+function goLevel(n, opts = {}) {
   if (!LEVELS[n] || busy) return;
-  if (n === state.level) { fit(true); return; }
+  if (n === state.level) { if (opts.focus) { openPanel(opts.focus); focusNode(opts.focus, true); } else fit(true); return; }
   busy = true;
   closePanel(true);
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finish = () => {
-    state.level = n;
-    state.selected = null;
-    render();
-    fit(false);
+    state.level = n; state.selected = null; state.hidden.clear();
+    render(); fit(false);
+    const done = () => {
+      busy = false;
+      if (opts.focus) { openPanel(opts.focus); focusNode(opts.focus, true); }
+    };
     if (!reduce) {
       const sc = state.scale, tx = state.tx, ty = state.ty;
       stage.classList.add("pre");
-      const vw = viewport.clientWidth, vh = viewport.clientHeight;
-      state.scale = sc * 0.94; state.tx = tx + vw * 0.03; state.ty = ty + vh * 0.03; apply();
+      state.scale = sc * 0.92; state.tx = tx + viewport.clientWidth * 0.04; state.ty = ty + viewport.clientHeight * 0.04; apply();
       requestAnimationFrame(() => requestAnimationFrame(() => {
         stage.classList.add("anim"); stage.classList.remove("pre");
         state.scale = sc; state.tx = tx; state.ty = ty; apply();
-        setTimeout(() => { stage.classList.remove("anim"); busy = false; }, 480);
+        setTimeout(() => { stage.classList.remove("anim"); done(); }, 560);
       }));
-    } else busy = false;
-    try { history.replaceState(null, "", "#nivel-" + n); } catch (e) { location.hash = "nivel-" + n; }
+    } else done();
+    try { history.replaceState(null, "", "#nivel-" + n); } catch (e) { /* sem histórico */ }
   };
   if (reduce) { finish(); return; }
-  // "mergulha" no card de origem antes de trocar de nível
   stage.classList.add("anim", "out");
-  if (fromId && state.nodes[fromId]) {
-    const c = center(state.nodes[fromId].box);
-    const px = state.tx + c[0] * state.scale, py = state.ty + c[1] * state.scale;
-    const k = 1.6;
-    state.tx = viewport.clientWidth / 2 - (px - state.tx) * k;
-    state.ty = viewport.clientHeight / 2 - (py - state.ty) * k;
-    state.scale *= k;
-  } else {
-    zoomAt(n > state.level ? 1.15 : 0.88);
-  }
+  if (opts.from && state.nodes[opts.from]) {
+    const [cx, cy] = center(state.nodes[opts.from].box);
+    const k = 1.7, px = state.tx + cx * state.scale, py = state.ty + cy * state.scale;
+    state.tx = viewport.clientWidth / 2 - (px - state.tx) * k; state.ty = viewport.clientHeight / 2 - (py - state.ty) * k; state.scale *= k;
+  } else zoomAt(n > state.level ? 1.15 : 0.87);
   apply();
-  setTimeout(() => { stage.classList.remove("anim", "out"); finish(); }, 340);
+  setTimeout(() => { stage.classList.remove("anim", "out"); finish(); }, 380);
 }
 
-/* ===================== Painel de detalhes ===================== */
+/* ---------- Painel de detalhes ---------- */
 function openPanel(id) {
   const n = state.nodes[id]; if (!n) return;
   const d = n.d;
   Object.values(state.nodes).forEach(x => x.el.classList.remove("selected"));
-  n.el.classList.add("selected");
-  state.selected = id;
-  highlightNode(id);
-
+  n.el.classList.add("selected"); state.selected = id; highlightNode(id);
   const badge = $("#pBadge");
-  badge.textContent = d.optional ? "Externo opcional" : TYPE_LABEL[d.type];
-  badge.style.setProperty("--hue", TYPE_HUE[d.type]);
+  badge.textContent = d.type === "table" ? "Tabela · " + AREAS[d.area].label : (d.optional ? "Externo opcional" : TYPE_LABEL[d.type]);
+  badge.style.setProperty("--hue", nodeHue(d));
+  $("#pLv").textContent = LEVELS[state.level].eyebrow;
   $("#pTitle").textContent = d.title;
   $("#pTech").textContent = "[" + d.tech + "]";
-
   const conns = state.edges.filter(e => e.f === id || e.t === id).map(e => {
-    const outE = e.f === id, other = state.nodes[outE ? e.t : e.f].d;
-    return `<button data-go="${other.id}"><span class="dir ${outE ? "o" : "i"}">${e.both ? "⇄" : outE ? "→" : "←"}</span>
-      <span><strong>${esc(other.title)}</strong><small>${esc(e.a)} <span class="mono">[${esc(e.p)}]</span></small></span></button>`;
+    const out = e.f === id, other = state.nodes[out ? e.t : e.f].d;
+    const self = e.f === e.t;
+    return `<button data-go="${other.id}"><span class="dir ${out ? "o" : "i"}">${self ? "↻" : e.both ? "⇄" : out ? "→" : "←"}</span><span><strong>${esc(other.title)}</strong><small>${esc(e.a)} <span class="mono">[${esc(e.p)}]</span></small></span></button>`;
   }).join("");
-
-  const sec = (title, html) => html ? `<section><h4>${title}</h4>${html}</section>` : "";
-  const list = (arr, cls) => arr && arr.length ? `<ul class="dots ${cls || ""}">${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
-  const evTags = ["EVT", "SSE", "AMQP"];
-  const api = d.api && d.api.length ? `<ul class="api">${d.api.map(([m, p]) => `<li><b class="${evTags.includes(m) ? "ev" : ""}">${esc(m)}</b><span>${esc(p)}</span></li>`).join("")}</ul>` : "";
-  const stack = d.stack && d.stack.length ? `<div class="stack">${d.stack.map(s => `<span>${esc(s)}</span>`).join("")}</div>` : "";
-  const drill = d.drill ? `<button class="drill-btn" data-drill="${d.drill}">${ICON.zoom} Entrar no Nível ${d.drill} · ${LEVELS[d.drill].key}</button>` : "";
-
-  $("#pBody").innerHTML = `<p class="lead">${esc(d.desc)}</p>${drill}`
-    + sec("Responsabilidades", list(d.resp))
-    + sec("Stack tecnológica", stack)
-    + sec("Endpoints e eventos", api)
-    + sec("Regras de negócio", list(d.rules, "rules"))
-    + sec("Conexões", conns ? `<div class="conn">${conns}</div>` : "");
-
-  $("#pBody").querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.go)));
-  const db = $("#pBody").querySelector(".drill-btn");
-  if (db) db.addEventListener("click", () => goLevel(+db.dataset.drill, id));
+  const sec = (t, h) => h ? `<section><h5>${t}</h5>${h}</section>` : "";
+  const list = (a, c) => a && a.length ? `<ul class="dots ${c || ""}">${a.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const ev = ["EVT", "SSE", "AMQP"];
+  const api = d.api && d.api.length ? `<ul class="api">${d.api.map(([m, p]) => `<li><b class="${ev.includes(m) ? "ev" : ""}">${esc(m)}</b><span>${esc(p)}</span></li>`).join("")}</ul>` : "";
+  const stack = d.stack && d.stack.length ? `<div class="tags">${d.stack.map(s => `<span class="tag">${esc(s)}</span>`).join("")}</div>` : "";
+  const fields = d.fields ? `<table><tbody>${d.fields.map(([f, t, k]) => `<tr><td>${k ? `<b class="k-${k}">${k}</b> ` : ""}${esc(f)}</td><td>${esc(t)}</td></tr>`).join("")}</tbody></table>` : "";
+  const drill = d.drill ? `<button class="btn btn--primary drill-btn" data-drill="${d.drill}">${ICON.zoom} Descer ao Nível ${d.drill} · ${LEVELS[d.drill].key}</button>` : "";
+  const ref = d.ref ? `<button class="btn btn--glass btn--sm drill-btn" data-ref="${d.ref}">Ver no nível anterior</button>` : "";
+  $("#pBody").innerHTML = `<p class="lead">${esc(d.desc)}</p>${drill}${ref}`
+    + sec("Campos", fields) + sec("Responsabilidades", list(d.resp)) + sec("Stack tecnológica", stack)
+    + sec("Endpoints e eventos", api) + sec(d.type === "table" ? "Regras e integridade" : "Regras de negócio", list(d.rules, "rules"))
+    + sec(d.type === "table" ? "Relacionamentos" : "Conexões", conns ? `<div class="conn">${conns}</div>` : "");
+  $$("#pBody [data-go]").forEach(b => b.addEventListener("click", () => { openPanel(b.dataset.go); focusNode(b.dataset.go, true); }));
+  const db = $("#pBody [data-drill]"); if (db) db.addEventListener("click", () => goLevel(+db.dataset.drill, { from: id }));
+  const rb = $("#pBody [data-ref]"); if (rb) rb.addEventListener("click", () => { const lv = findLevelOf(rb.dataset.ref); if (lv) goLevel(lv, { focus: rb.dataset.ref }); });
   $("#pBody").scrollTop = 0;
-
   panel.classList.add("open"); panel.setAttribute("aria-hidden", "false");
-  if (window.innerWidth < 900) scrim.classList.add("on");
+  if (innerWidth < 900) scrim.classList.add("on");
 }
 function closePanel(silent) {
   panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); scrim.classList.remove("on");
@@ -1329,38 +1752,244 @@ function closePanel(silent) {
 }
 $("#pClose").addEventListener("click", () => closePanel());
 scrim.addEventListener("click", () => closePanel());
+function findLevelOf(id) { for (const lv of [1, 2, 3, 4]) if (LEVELS[lv].nodes.some(n => n.id === id)) return lv; return 0; }
+
+/* ===================== Busca (Ctrl K) ===================== */
+const cmdk = $("#cmdk"), cIn = $("#cmdkInput"), cList = $("#cmdkList");
+const INDEX = [];
+[1, 2, 3, 4].forEach(lv => LEVELS[lv].nodes.forEach(n => {
+  const extra = [(n.api || []).map(a => a.join(" ")).join(" "), (n.stack || []).join(" "), (n.fields || []).map(f => f[0]).join(" ")].join(" ");
+  INDEX.push({ kind: "node", lv, id: n.id, title: n.title, sub: n.type === "table" ? "Tabela · " + AREAS[n.area].label : TYPE_LABEL[n.type] + " · " + n.tech, hue: nodeHue(n), icon: ICON[n.type], hay: (n.title + " " + n.tech + " " + n.desc + " " + extra).toLowerCase() });
+}));
+[["#fluxo", "Fluxo crítico: avaliação até o telão", "Diagrama de sequência interativo"], ["#integridade", "Garantias de integridade", "Lock, UNIQUE, jogo finalizado, após o commit"], ["#decisoes", "Decisões arquiteturais", "As 7 ADRs"], ["#stack", "Stack por camada", "Backend, frontend, dados, infra"]].forEach(([href, t, s]) =>
+  INDEX.push({ kind: "sec", href, title: t, sub: s, hue: "#3B82F6", icon: ICON.plus.replace("M12 5v14M5 12h14", "M5 12h14M13 6l6 6-6 6"), hay: (t + " " + s).toLowerCase() }));
+let cRes = [], cSel = 0;
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+INDEX.forEach(x => { x.hayN = norm(x.hay); x.titleN = norm(x.title); });
+function cmdkSearch() {
+  const q = norm(cIn.value.trim());
+  cRes = !q ? INDEX.filter(x => x.kind === "sec" || x.lv === state.level).slice(0, 14)
+    : INDEX.map(x => ({ x, s: x.titleN.startsWith(q) ? 3 : x.titleN.includes(q) ? 2 : q.split(/\s+/).every(w => x.hayN.includes(w)) ? 1 : 0 }))
+      .filter(r => r.s).sort((a, b) => b.s - a.s).map(r => r.x).slice(0, 30);
+  cSel = 0; drawCmdk();
+}
+function drawCmdk() {
+  cList.innerHTML = cRes.length ? cRes.map((x, i) => `<button class="cmdk__item${i === cSel ? " on" : ""}" data-i="${i}" role="option" aria-selected="${i === cSel}" style="--hue:${x.hue}"><i>${x.icon}</i><span><strong>${esc(x.title)}</strong><small>${esc(x.sub)}</small></span><em>${x.kind === "sec" ? "seção" : "Nível " + x.lv}</em></button>`).join("")
+    : `<div class="cmdk__empty">Nada encontrado. Tente um nome de tabela, container ou endpoint.</div>`;
+  $$(".cmdk__item", cList).forEach(b => {
+    b.addEventListener("click", () => pick(+b.dataset.i));
+    b.addEventListener("pointermove", () => { if (cSel !== +b.dataset.i) { cSel = +b.dataset.i; drawCmdk(); } });
+  });
+  const on = $(".cmdk__item.on", cList); if (on) on.scrollIntoView({ block: "nearest" });
+}
+function pick(i) {
+  const x = cRes[i]; if (!x) return;
+  closeCmdk();
+  if (x.kind === "sec") { document.querySelector(x.href).scrollIntoView({ behavior: reduce ? "auto" : "smooth" }); return; }
+  explorer.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  setTimeout(() => goLevel(x.lv, { focus: x.id }), 350);
+}
+function openCmdk() { cmdk.classList.add("on"); cmdk.setAttribute("aria-hidden", "false"); cIn.value = ""; cmdkSearch(); setTimeout(() => cIn.focus(), 30); }
+function closeCmdk() { cmdk.classList.remove("on"); cmdk.setAttribute("aria-hidden", "true"); }
+cIn.addEventListener("input", cmdkSearch);
+cIn.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown") { e.preventDefault(); cSel = Math.min(cRes.length - 1, cSel + 1); drawCmdk(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); cSel = Math.max(0, cSel - 1); drawCmdk(); }
+  else if (e.key === "Enter") { e.preventDefault(); pick(cSel); }
+  else if (e.key === "Escape") { e.preventDefault(); closeCmdk(); }
+});
+cmdk.addEventListener("click", e => { if (e.target === cmdk) closeCmdk(); });
+$("#openCmdk").addEventListener("click", openCmdk);
+$("#exSearch").addEventListener("click", openCmdk);
+
+/* ===================== Fluxo crítico (sequência) ===================== */
+const SQ = { sc: "last", step: 0, timer: null };
+const seqSvg = $("#seqSvg");
+const PX = 106, PW = 96, TOP = 20, HEADH = 54, ROW = 48;
+const pIndex = Object.fromEntries(SEQ.parts.map((p, i) => [p.id, i]));
+const pX = id => 60 + pIndex[id] * PX;
+function drawSeq() {
+  const n = SEQ.msgs.length;
+  const W = 60 + (SEQ.parts.length - 1) * PX + 60, H = TOP + HEADH + 30 + n * ROW + 30;
+  seqSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  let s = `<defs>
+    <marker id="sqA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#C3D3EA"/></marker>
+    <marker id="sqO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#C3D3EA" stroke-width="1.6"/></marker>
+    <marker id="sqY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#FCD34D" stroke-width="1.6"/></marker>
+  </defs>`;
+  const y0 = TOP + HEADH + 30;
+  // caixa alt
+  const altIdx = SEQ.msgs.map((m, i) => m.alt ? i : -1).filter(i => i >= 0);
+  if (altIdx.length) {
+    const a = altIdx[0], b = altIdx[altIdx.length - 1];
+    const ya = y0 + a * ROW - 20, yb = y0 + b * ROW + 22;
+    const pendEnd = SEQ.msgs.findIndex(m => m.alt === "last");
+    const ysplit = y0 + pendEnd * ROW - 22;
+    s += `<rect x="${pX("SPA") - 34}" y="${ya}" width="${pX("TEL") - pX("SPA") - 40}" height="${yb - ya}" rx="10" fill="rgba(184,172,251,.05)" stroke="#B8ACFB" stroke-opacity=".5" stroke-dasharray="4 4"/>
+      <rect x="${pX("SPA") - 34}" y="${ya}" width="34" height="18" rx="6" fill="#B8ACFB" fill-opacity=".25"/><text x="${pX("SPA") - 17}" y="${ya + 13}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#DDD6FE">alt</text>
+      <text x="${pX("SPA") + 6}" y="${ya + 13}" font-family="Inter, sans-serif" font-size="10.5" fill="#C4B5FD">[ainda falta árbitro]</text>
+      <line x1="${pX("SPA") - 34}" x2="${pX("TEL") - 74}" y1="${ysplit}" y2="${ysplit}" stroke="#B8ACFB" stroke-opacity=".5" stroke-dasharray="4 4"/>
+      <text x="${pX("SPA") + 6}" y="${ysplit + 14}" font-family="Inter, sans-serif" font-size="10.5" fill="#C4B5FD">[último dos 3 lançamentos]</text>`;
+  }
+  // participantes e linhas de vida
+  SEQ.parts.forEach(p => {
+    const x = pX(p.id);
+    s += `<line x1="${x}" x2="${x}" y1="${TOP + HEADH}" y2="${H - 10}" stroke="rgba(219,234,254,.14)" stroke-dasharray="3 5"/>`;
+    const fill = p.actor ? "#163A5F" : p.db ? "#12304F" : "#0F2741";
+    const stroke = p.actor ? "#3B82F6" : p.db ? "#438DD5" : "rgba(219,234,254,.25)";
+    s += `<g><rect x="${x - PW / 2}" y="${TOP}" width="${PW}" height="${HEADH}" rx="${p.actor ? 27 : 12}" fill="${fill}" stroke="${stroke}"/>
+      <text x="${x}" y="${TOP + 23}" text-anchor="middle" font-family="Plus Jakarta Sans, Inter, sans-serif" font-weight="700" font-size="11.5" fill="#fff">${esc(p.name)}</text>
+      <text x="${x}" y="${TOP + 39}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#93B4F8">${esc(p.sub)}</text></g>`;
+  });
+  // mensagens
+  SEQ.msgs.forEach((m, i) => {
+    const y = y0 + i * ROW, x1 = pX(m.f), x2 = pX(m.t);
+    const col = m.k === "async" ? "#FCD34D" : "rgba(219,234,254,.55)";
+    const dash = m.k === "reply" ? ' stroke-dasharray="5 4"' : m.k === "async" ? ' stroke-dasharray="7 3"' : "";
+    const mk = m.k === "sync" || m.k === "self" ? "sqA" : m.k === "async" ? "sqY" : "sqO";
+    let line, tx, anchor;
+    if (m.k === "self") {
+      line = `<path d="M${x1} ${y - 8} h46 v16 h-42" fill="none" stroke="${col}" stroke-width="1.6" marker-end="url(#${mk})"/>`;
+      tx = x1 + 54; anchor = "start";
+    } else {
+      const dir = x2 > x1 ? 1 : -1;
+      line = `<line x1="${x1 + dir * 4}" x2="${x2 - dir * 6}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1.6"${dash} marker-end="url(#${mk})"/>`;
+      tx = (x1 + x2) / 2; anchor = "middle";
+    }
+    const ty = m.k === "self" ? y + 4 : y - 12;
+    const nx = Math.min(x1, x2 === x1 ? x1 : x2) - 26;
+    s += `<g class="sq-msg" data-i="${i}" tabindex="0" role="button" aria-label="Passo: ${esc(m.txt)}">
+      <rect x="${Math.min(x1, x2) - 30}" y="${y - 24}" width="${Math.abs(x2 - x1) + (m.k === "self" ? 300 : 60)}" height="${ROW - 4}" fill="transparent"/>
+      ${line}
+      <circle class="num-c" cx="${m.k === "self" ? x1 - 16 : nx + 6}" cy="${y}" r="9" fill="#163A5F" stroke="rgba(219,234,254,.25)"/>
+      <text x="${m.k === "self" ? x1 - 16 : nx + 6}" y="${y + 3.5}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#DBEAFE">${i + 1}</text>
+      <text x="${tx}" y="${ty}" text-anchor="${anchor}" font-family="Inter, sans-serif" font-size="11" fill="rgba(243,244,246,.75)">${esc(m.txt)}</text>
+    </g>`;
+  });
+  s += `<circle id="sqDot" r="5" fill="#60A5FA" opacity="0" style="filter: drop-shadow(0 0 6px #60A5FA)"/>`;
+  seqSvg.innerHTML = s;
+  $$(".sq-msg", seqSvg).forEach(g => {
+    const go = () => { const i = +g.dataset.i; const st = steps(); const k = st.indexOf(i); if (k >= 0) { stopSeq(); setStep(k); } else toast("Este passo é do outro cenário"); };
+    g.addEventListener("click", go);
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+}
+const steps = () => SEQ.msgs.map((m, i) => (!m.alt || m.alt === SQ.sc) ? i : -1).filter(i => i >= 0);
+let dotAnim;
+function setStep(k) {
+  const st = steps(); SQ.step = Math.max(0, Math.min(st.length - 1, k));
+  const cur = st[SQ.step];
+  $$(".sq-msg", seqSvg).forEach(g => {
+    const i = +g.dataset.i, m = SEQ.msgs[i];
+    g.classList.toggle("dim", !!m.alt && m.alt !== SQ.sc);
+    g.classList.toggle("cur", i === cur);
+    g.classList.toggle("done", st.indexOf(i) >= 0 && st.indexOf(i) < SQ.step);
+  });
+  const m = SEQ.msgs[cur];
+  $("#stK").textContent = `Passo ${SQ.step + 1} de ${st.length}` + (m.k === "async" ? " · evento assíncrono" : m.k === "reply" ? " · resposta" : "");
+  $("#stT").textContent = m.txt;
+  $("#stW").textContent = m.why;
+  const pn = id => { const p = SEQ.parts[pIndex[id]]; return p.name + " " + p.sub; };
+  $("#stR").innerHTML = m.f === m.t ? `<span>${esc(pn(m.f))}</span><span style="border:0;background:none">↻</span>` : `<span>${esc(pn(m.f))}</span><span style="border:0;background:none">→</span><span>${esc(pn(m.t))}</span>`;
+  $("#stP").style.width = ((SQ.step + 1) / st.length * 100) + "%";
+  // ponto viajando na seta
+  const dot = $("#sqDot"); cancelAnimationFrame(dotAnim);
+  if (reduce || !dot) return;
+  const y = 20 + HEADH + 30 + cur * ROW, x1 = pX(m.f), x2 = m.f === m.t ? pX(m.f) + 46 : pX(m.t);
+  dot.setAttribute("fill", m.k === "async" ? "#FCD34D" : "#60A5FA");
+  const t0 = performance.now();
+  const tick = now => {
+    const p = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - p, 3);
+    dot.setAttribute("cx", x1 + (x2 - x1) * e); dot.setAttribute("cy", m.f === m.t ? y - 8 + 16 * e : y);
+    dot.setAttribute("opacity", p < 1 ? 1 : 0);
+    if (p < 1) dotAnim = requestAnimationFrame(tick);
+  };
+  dotAnim = requestAnimationFrame(tick);
+}
+const PLAY = '<path d="M7 4v16l13-8z"/>', PAUSE = '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>';
+function playSeq() {
+  if (SQ.timer) { stopSeq(); return; }
+  if (SQ.step >= steps().length - 1) setStep(0);
+  $("#sqPlayIco").innerHTML = PAUSE; $("#sqPlay").setAttribute("aria-label", "Pausar");
+  SQ.timer = setInterval(() => { if (SQ.step >= steps().length - 1) { stopSeq(); return; } setStep(SQ.step + 1); }, 2300);
+}
+function stopSeq() { clearInterval(SQ.timer); SQ.timer = null; $("#sqPlayIco").innerHTML = PLAY; $("#sqPlay").setAttribute("aria-label", "Reproduzir"); }
+$("#sqPlay").addEventListener("click", playSeq);
+$("#sqNext").addEventListener("click", () => { stopSeq(); setStep(SQ.step + 1); });
+$("#sqPrev").addEventListener("click", () => { stopSeq(); setStep(SQ.step - 1); });
+$("#sqFirst").addEventListener("click", () => { stopSeq(); setStep(0); });
+$$(".seg button").forEach(b => b.addEventListener("click", () => {
+  SQ.sc = b.dataset.sc; $$(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  stopSeq(); setStep(0);
+}));
+// começa a tocar sozinho quando a seção aparece
+const seqIo = new IntersectionObserver(en => { if (en[0].isIntersecting && !SQ.auto && !reduce) { SQ.auto = 1; playSeq(); } }, { threshold: 0.35 });
+seqIo.observe($(".seq"));
+
+/* ===================== Decisões e stack ===================== */
+const ADRS = [
+  ["Servidor local, offline", "Nenhuma nuvem em tempo de evento; o próprio backend emite o JWT.", "Descartado: Keycloak ou Auth0, que exigiriam internet ou mais um serviço para operar no ginásio."],
+  ["API stateless com JWT (RSA)", "O token carrega o perfil; árbitros, telão e mesa não dependem de sessão em memória.", "Descartado: sessão no servidor, que quebraria ao reiniciar a API e complicaria várias instâncias."],
+  ["SSE em vez de WebSocket", "O fluxo é quase todo do servidor para o cliente e passa pelo Nginx sem complicação.", "Descartado: WebSocket, bidirecional sem necessidade e mais delicado de manter atrás do proxy."],
+  ["RabbitMQ só como sinal", "Desacopla quem altera o torneio de quem exibe. O MySQL é a única fonte oficial.", "Descartado: mandar o resultado inteiro pela fila, que criaria uma segunda fonte de verdade."],
+  ["Flyway + ddl-auto=validate", "O schema é versionado e a API não sobe se o banco divergir.", "Descartado: ddl-auto=update, que altera o banco sem revisão e sem histórico."],
+  ["Integridade também no banco", "UNIQUE para ordem de jogo, avaliação por árbitro e histórico por atleta, além das regras no service.", "Descartado: confiar só no código, que não segura dois toques simultâneos no tablet."],
+  ["Uma VM de produção", "Mais simples de operar no dia do campeonato, com backup diário da VM no Proxmox.", "Descartado: duas VMs (app e banco separados, proxy e DNS próprios), avaliado em novembro."]
+];
+$("#adrs").innerHTML = ADRS.map(([t, p, alt], i) => `<button class="adr spotlight" data-reveal style="--d:${(i % 3) * 0.07}s" aria-expanded="false">
+  <span class="n">ADR ${String(i + 1).padStart(2, "0")}</span><h3>${esc(t)}</h3><p>${esc(p)}</p>
+  <div class="more"><div><p>${esc(alt)}</p></div></div>
+  <span class="tg">${ICON.plus}<span>Alternativa descartada</span></span></button>`).join("");
+$$(".adr").forEach(a => { io.observe(a); a.addEventListener("click", () => { const o = a.classList.toggle("open"); a.setAttribute("aria-expanded", o); }); });
+
+const STACK = [
+  ["Backend", "var(--c-container)", ["Java 21", "Spring Boot 3.5", "Spring Security", "OAuth2 Resource Server", "Spring Data JPA", "Spring AMQP", "WebFlux (SSE)", "Bean Validation", "springdoc", "Lombok", "Maven"]],
+  ["Frontend", "var(--c-component)", ["React 19", "TypeScript", "Vite", "Ant Design", "TanStack Query", "Axios", "React Router 7", "fetch-event-source", "ESLint + Prettier"]],
+  ["Dados e tempo real", "#7DD9F5", ["MySQL 8", "Flyway (35)", "RabbitMQ 4.1", "Server-Sent Events", "Auditoria JPA"]],
+  ["Infra e entrega", "#2563EB", ["Docker Compose", "Nginx + HTTPS local", "GitHub Actions", "GHCR", "Runner self-hosted", "Proxmox VE", "cloud-init"]],
+  ["Observabilidade", "#B8ACFB", ["Prometheus", "Grafana", "Loki + Alloy", "Uptime Kuma", "cAdvisor", "Glowroot"]],
+  ["Qualidade", "#B3E65F", ["JUnit 5", "Mockito", "AssertJ", "Testcontainers", "Allure", "JaCoCo", "SonarCloud"]]
+];
+$("#stackGrid").innerHTML = STACK.map(([t, c, tags], i) => `<article class="stack-card spotlight" data-reveal style="--d:${(i % 3) * 0.07}s"><h3><i style="--sw:${c}"></i>${t}</h3><div class="tags">${tags.map((x, j) => `<span class="tag${j < 2 ? " tag--primary" : ""}">${esc(x)}</span>`).join("")}</div></article>`).join("");
+$$(".stack-card").forEach(a => io.observe(a));
 
 /* ===================== Teclado ===================== */
-document.addEventListener("keydown", ev => {
-  if (ev.target.closest && ev.target.closest("input, textarea")) return;
-  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
-  const k = ev.key;
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); cmdk.classList.contains("on") ? closeCmdk() : openCmdk(); return; }
+  if (cmdk.classList.contains("on")) return;
+  if (e.target.closest && e.target.closest("input, textarea")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
   if (k === "Escape") closePanel();
-  else if (k === "1" || k === "2" || k === "3") goLevel(+k);
+  else if ("1234".includes(k) && k.length === 1) goLevel(+k);
   else if (k === "+" || k === "=") zoomAt(1.2, undefined, undefined, true);
   else if (k === "-" || k === "_") zoomAt(1 / 1.2, undefined, undefined, true);
   else if (k === "0") fit(true);
-  else if (k === "t" || k === "T") toggleTheme();
+  else if (k === "f" || k === "F") toggleFull();
+  else if (k === "/") { e.preventDefault(); openCmdk(); }
+  else if (seqVisible()) {
+    if (k === "ArrowRight") { stopSeq(); setStep(SQ.step + 1); }
+    else if (k === "ArrowLeft") { stopSeq(); setStep(SQ.step - 1); }
+    else if (k === " ") { e.preventDefault(); playSeq(); }
+  }
 });
+function seqVisible() { const r = $(".seq").getBoundingClientRect(); return r.top < innerHeight * 0.7 && r.bottom > innerHeight * 0.3; }
 
 /* ===================== Início ===================== */
-function levelFromHash() {
-  const m = /^#nivel-([123])$/.exec(location.hash);
-  return m ? +m[1] : 1;
-}
-window.addEventListener("hashchange", () => { const n = levelFromHash(); if (n !== state.level) goLevel(n); });
+function levelFromHash() { const m = /^#nivel-([1-4])$/.exec(location.hash); return m ? +m[1] : 1; }
+window.addEventListener("hashchange", () => { const n = levelFromHash(); if (/^#nivel-/.test(location.hash) && n !== state.level) goLevel(n); });
 let rt;
-window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { movePill(); fit(false); }, 120); });
-
+window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { movePill(); fit(false); drawMinimap(); }, 120); });
+let booted = false;
 function boot() {
+  if (booted) return; booted = true;
   state.level = levelFromHash();
-  render();
-  fit(false);
+  render(); fit(false);
+  drawSeq(); setStep(0);
+  onScroll();
+  if (/^#nivel-/.test(location.hash)) setTimeout(() => explorer.scrollIntoView(), 50);
 }
-if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(boot);
-  setTimeout(() => { if (!Object.keys(state.nodes).length) boot(); }, 1500);
-} else boot();
+if (document.fonts && document.fonts.ready) { document.fonts.ready.then(boot); setTimeout(boot, 1500); } else boot();
 })();
 </script>
 </body>
