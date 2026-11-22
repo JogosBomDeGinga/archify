@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SISJOGOS C4 Model</title>
+<meta name="description" content="Arquitetura do SISJOGOS (Jogos Bom de Ginga 2026) no padrão C4 Model: contexto, containers e componentes, em um diagrama interativo.">
+<meta name="theme-color" content="#0b0a0c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra fixa com os 3 níveis, palco do diagrama com zoom e arraste, painel lateral de detalhes, bento com stack e decisões.
+   Cores: tons C4 do board do Miro (pessoa, sistema, container, componente, externo) sobre um escuro neutro levemente puxado para o vinho do grupo. */
+:root {
+  --bg: #0b0a0c;
+  --bg-elev: #131114;
+  --bg-elev-2: #1a171b;
+  --glass: rgba(24, 21, 25, 0.72);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --fg: #f3eff1;
+  --fg-2: #aba3a8;
+  --fg-3: #756d72;
+  --wine: #9b3f4b;
+  --wine-fg: #ec8f9b;
+  --wine-soft: rgba(155, 63, 75, 0.2);
+  --in-fg: #79b6f2;
+  --edge: rgba(236, 228, 232, 0.34);
+  --edge-opt: rgba(236, 228, 232, 0.22);
+  --dot: rgba(255, 255, 255, 0.055);
+  --shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 32px -12px rgba(0,0,0,0.6);
+  --shadow-lg: 0 24px 64px -16px rgba(0,0,0,0.7);
+  --tint: 15%;
+  --tint-border: 40%;
+  --mix-fg: #ffffff;
+  --mix-fg-amt: 52%;
+
+  /* Tons C4 do board do Miro */
+  --c-person: #08427b;
+  --c-system: #1168bd;
+  --c-container: #438dd5;
+  --c-component: #85bbf0;
+  --c-external: #8a8a8a;
+
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f6f4f5;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #f1eef0;
+  --glass: rgba(255, 255, 255, 0.78);
+  --line: rgba(20, 10, 15, 0.09);
+  --line-strong: rgba(20, 10, 15, 0.18);
+  --fg: #17121a;
+  --fg-2: #5c5359;
+  --fg-3: #8d848a;
+  --wine: #8e3742;
+  --wine-fg: #8e3742;
+  --wine-soft: rgba(142, 55, 66, 0.1);
+  --in-fg: #1168bd;
+  --edge: rgba(30, 20, 26, 0.38);
+  --edge-opt: rgba(30, 20, 26, 0.24);
+  --dot: rgba(20, 10, 15, 0.07);
+  --shadow: 0 1px 2px rgba(20,10,15,0.05), 0 10px 28px -14px rgba(20,10,15,0.22);
+  --shadow-lg: 0 24px 60px -20px rgba(20,10,15,0.3);
+  --tint: 9%;
+  --tint-border: 34%;
+  --mix-fg: #000000;
+  --mix-fg-amt: 28%;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 60; background: var(--bg);
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--wine-fg); outline-offset: 2px; }
+.wrap {
+  max-width: 1360px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.mono { font-family: var(--font-mono); }
+
+/* ---------- Barra superior ---------- */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
+  background: var(--glass);
+  backdrop-filter: saturate(160%) blur(18px);
+  -webkit-backdrop-filter: saturate(160%) blur(18px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar .wrap {
+  display: flex; align-items: center; gap: 16px; min-height: 60px; padding-block: 10px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--fg); margin-right: auto; min-width: 0; }
+.brand svg { flex: none; }
+.brand b { font-weight: 650; letter-spacing: -0.01em; }
+.brand span { color: var(--fg-3); font-size: 13px; white-space: nowrap; }
+.levels {
+  position: relative; display: flex; padding: 4px; gap: 2px;
+  background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: 999px;
+}
+.levels .pill {
+  position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 999px;
+  background: var(--bg-elev); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  transition: left .35s cubic-bezier(.3,.8,.2,1), width .35s cubic-bezier(.3,.8,.2,1);
+}
+.levels button {
+  position: relative; z-index: 1; border: 0; background: none; cursor: pointer;
+  padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 550; color: var(--fg-2);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: color .2s;
+}
+.levels button[aria-selected="true"] { color: var(--fg); }
+.levels button .n {
+  font-family: var(--font-mono); font-size: 11px; width: 18px; height: 18px; border-radius: 6px;
+  display: grid; place-items: center; background: var(--line); color: var(--fg-2);
+}
+.levels button[aria-selected="true"] .n { background: var(--wine); color: #fff; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-elev);
+  display: grid; place-items: center; cursor: pointer; color: var(--fg-2); transition: color .2s, border-color .2s, background .2s;
+}
+.icon-btn:hover { color: var(--fg); border-color: var(--line-strong); }
+
+/* ---------- Cabeçalho do nível ---------- */
+.intro { padding-block: 40px 20px; display: grid; gap: 14px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-3); }
+.crumbs button { border: 0; background: none; padding: 2px 6px; border-radius: 6px; cursor: pointer; color: var(--fg-2); }
+.crumbs button:hover { background: var(--line); color: var(--fg); }
+.crumbs .cur { color: var(--fg); padding: 2px 6px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--wine-fg); }
+.intro h1 {
+  margin: 0; font-size: clamp(30px, 4.6vw, 52px); line-height: 1.05; letter-spacing: -0.035em; font-weight: 700;
+  text-wrap: balance;
+}
+.intro h1 .muted { color: var(--fg-3); }
+.intro p.scope { margin: 0; max-width: 72ch; color: var(--fg-2); font-size: 16px; }
+
+/* ---------- Ferramentas ---------- */
+.tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding-bottom: 14px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-elev); color: var(--fg-2); cursor: pointer; font-size: 13px; font-weight: 500;
+  transition: border-color .2s, color .2s, opacity .2s, background .2s;
+}
+.chip:hover { border-color: var(--line-strong); color: var(--fg); }
+.chip .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--sw); box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset; }
+.chip .ct { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); }
+.chip[aria-pressed="false"] { opacity: .5; background: transparent; }
+.chip[aria-pressed="false"] .sw { background: transparent; box-shadow: 0 0 0 1.5px var(--sw) inset; }
+.zoom { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-elev); }
+.zoom button { border: 0; background: none; height: 30px; min-width: 30px; padding: 0 8px; border-radius: 8px; cursor: pointer; color: var(--fg-2); font-size: 13px; font-weight: 550; }
+.zoom button:hover { background: var(--line); color: var(--fg); }
+.zoom output { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ---------- Palco ---------- */
+.viewport {
+  position: relative; height: clamp(460px, 74vh, 880px); overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  background-color: var(--bg-elev);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.viewport::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(120% 60% at 50% -10%, var(--wine-soft), transparent 60%);
+}
+.viewport.grabbing { cursor: grabbing; }
+.stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.stage.anim { transition: transform .45s cubic-bezier(.3,.8,.2,1), opacity .35s ease; }
+.stage.out { opacity: 0; }
+.stage.pre { opacity: 0; }
+svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.hint {
+  position: absolute; left: 14px; bottom: 12px; z-index: 3; font-size: 12px; color: var(--fg-3);
+  display: flex; gap: 14px; flex-wrap: wrap; pointer-events: none;
+}
+.hint kbd, .kbd {
+  font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 5px;
+  border: 1px solid var(--line-strong); background: var(--bg-elev-2); color: var(--fg-2);
+}
+
+/* Fronteiras */
+.boundary {
+  position: absolute; border: 1.5px dashed var(--line-strong); border-radius: 18px; pointer-events: none;
+  background: color-mix(in srgb, var(--fg) 1.5%, transparent);
+}
+.boundary .bl {
+  position: absolute; left: 16px; top: -12px; padding: 2px 10px; border-radius: 999px;
+  background: var(--bg-elev); border: 1px solid var(--line-strong); font-size: 12px; font-weight: 550; color: var(--fg-2);
+  white-space: nowrap; display: flex; gap: 8px; align-items: center;
+}
+.boundary .bl i { font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); }
+
+/* Cards */
+.node {
+  --hue: var(--c-container);
+  position: absolute; display: flex; flex-direction: column; gap: 8px; text-align: left;
+  padding: 14px 16px 16px; border-radius: var(--r-md); cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hue) calc(var(--tint) + 5%), var(--bg-elev)), color-mix(in srgb, var(--hue) var(--tint), var(--bg-elev)));
+  border: 1px solid color-mix(in srgb, var(--hue) var(--tint-border), transparent);
+  box-shadow: var(--shadow);
+  transition: opacity .25s ease, transform .25s cubic-bezier(.3,.8,.2,1), box-shadow .25s, border-color .25s, filter .25s;
+}
+.node:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--hue) 70%, transparent); box-shadow: var(--shadow-lg); }
+.node.selected { border-color: var(--wine-fg); box-shadow: 0 0 0 3px var(--wine-soft), var(--shadow-lg); }
+.node.t-person { --hue: var(--c-person); border-radius: 22px; }
+.node.t-system { --hue: var(--c-system); }
+.node.t-container { --hue: var(--c-container); }
+.node.t-component { --hue: var(--c-component); }
+.node.t-db { --hue: var(--c-container); border-radius: 50% 50% var(--r-md) var(--r-md) / 22px 22px var(--r-md) var(--r-md); padding-top: 24px; }
+.node.t-db::before {
+  content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 26px; border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--hue) 60%, transparent);
+  background: color-mix(in srgb, var(--hue) calc(var(--tint) + 12%), var(--bg-elev));
+}
+.node.t-external { --hue: var(--c-external); }
+.node.optional { border-style: dashed; }
+.node .top { display: flex; align-items: center; gap: 8px; position: relative; }
+.node .ico {
+  width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--hue) 34%, transparent); color: color-mix(in srgb, var(--hue) var(--mix-fg-amt), var(--mix-fg));
+}
+.node .badge {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--hue) var(--mix-fg-amt), var(--mix-fg));
+}
+.node .drill {
+  margin-left: auto; width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line-strong);
+  display: grid; place-items: center; color: var(--fg-2); background: var(--bg-elev);
+  transition: color .2s, background .2s, border-color .2s;
+}
+.node .drill:hover { color: #fff; background: var(--wine); border-color: var(--wine); }
+.node h3 { margin: 0; font-size: 16px; line-height: 1.25; letter-spacing: -0.01em; font-weight: 650; color: var(--fg); position: relative; }
+.node .tech { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.45; color: var(--fg-2); position: relative; }
+.node p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-2); position: relative; }
+.node.t-system h3 { font-size: 22px; }
+.node.t-system p { font-size: 14px; }
+
+/* Rótulos das setas */
+.elabel {
+  position: absolute; transform: translate(-50%, -50%); max-width: 150px; text-align: center;
+  padding: 5px 9px; border-radius: 9px; background: var(--bg-elev); border: 1px solid var(--line);
+  font-size: 11.5px; line-height: 1.3; color: var(--fg-2); pointer-events: auto; cursor: default;
+  box-shadow: 0 4px 14px -6px rgba(0,0,0,.35);
+  transition: opacity .25s, border-color .2s, color .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.elabel .p { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-3); }
+
+/* Setas */
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; marker-end: url(#ah); transition: stroke .2s, opacity .25s, stroke-width .2s; }
+.edge.both { marker-start: url(#ah-s); }
+.edge.async { stroke-dasharray: 6 5; animation: flow 1.4s linear infinite; }
+.edge.opt { stroke: var(--edge-opt); stroke-dasharray: 2 5; marker-end: url(#ah-opt); }
+@keyframes flow { to { stroke-dashoffset: -22; } }
+.ehit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: default; }
+
+/* Destaque ao passar o mouse */
+.stage.focus .node:not(.hl):not(.nb) { opacity: .2; filter: saturate(.4); }
+.stage.focus .edge:not(.e-out):not(.e-in) { opacity: .1; }
+.stage.focus .elabel:not(.e-out):not(.e-in) { opacity: .12; }
+.stage.focus .boundary { opacity: .5; }
+.edge.e-out { stroke: var(--wine-fg); stroke-width: 2.2; marker-end: url(#ah-out); }
+.edge.e-out.both { marker-start: url(#ah-out-s); }
+.edge.e-in { stroke: var(--in-fg); stroke-width: 2.2; marker-end: url(#ah-in); }
+.edge.e-in.both { marker-start: url(#ah-in-s); }
+.elabel.e-out { border-color: color-mix(in srgb, var(--wine-fg) 55%, transparent); color: var(--fg); }
+.elabel.e-in { border-color: color-mix(in srgb, var(--in-fg) 55%, transparent); color: var(--fg); }
+.node.nb { opacity: 1; }
+
+/* Filtro */
+.node.filtered { opacity: .08 !important; pointer-events: none; filter: grayscale(1); }
+.edge.filtered, .elabel.filtered { opacity: .05 !important; }
+
+/* ---------- Legenda ---------- */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 16px 4px 0; font-size: 12.5px; color: var(--fg-2);
+}
+.legend .grp { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.legend .t { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-3); }
+.legend .it { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.legend .sw { width: 22px; height: 14px; border-radius: 4px; background: color-mix(in srgb, var(--sw) 30%, var(--bg-elev)); border: 1px solid color-mix(in srgb, var(--sw) 70%, transparent); }
+.legend .sw.person { border-radius: 8px; }
+.legend .sw.db { border-radius: 50% 50% 4px 4px / 6px 6px 4px 4px; }
+.legend .sw.opt { border-style: dashed; }
+.legend .sw.bd { background: transparent; border: 1.5px dashed var(--line-strong); }
+.legend svg { flex: none; }
+.legend .sep { width: 1px; height: 18px; background: var(--line); }
+
+/* ---------- Painel lateral ---------- */
+.scrim { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .3s; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.panel {
+  position: fixed; z-index: 80; top: 0; right: 0; bottom: 0; width: min(460px, 100vw);
+  background: var(--glass); backdrop-filter: saturate(170%) blur(24px); -webkit-backdrop-filter: saturate(170%) blur(24px);
+  border-left: 1px solid var(--line-strong); box-shadow: var(--shadow-lg);
+  transform: translateX(104%); transition: transform .45s cubic-bezier(.3,.8,.2,1);
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.panel.open { transform: none; }
+.panel header { padding: 20px 22px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.panel .ph-top { display: flex; align-items: center; gap: 10px; }
+.panel .tbadge {
+  --hue: var(--c-container);
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--hue) 26%, transparent);
+  color: color-mix(in srgb, var(--hue) var(--mix-fg-amt), var(--mix-fg));
+  border: 1px solid color-mix(in srgb, var(--hue) 50%, transparent);
+}
+.panel .close { margin-left: auto; }
+.panel h2 { margin: 0; font-size: 26px; letter-spacing: -0.025em; line-height: 1.15; font-weight: 700; text-wrap: balance; }
+.panel .ptech { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-2); }
+.panel .body { overflow-y: auto; padding: 8px 22px 28px; display: grid; gap: 4px; overscroll-behavior: contain; }
+.panel section { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.panel section:last-child { border-bottom: 0; }
+.panel h4 { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+.panel p.lead { margin: 14px 0 0; color: var(--fg-2); font-size: 14.5px; }
+.panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.panel ul.dots li { position: relative; padding-left: 16px; font-size: 14px; color: var(--fg); }
+.panel ul.dots li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 5px; height: 5px; border-radius: 2px; background: var(--wine-fg); }
+.panel ul.rules li::before { background: var(--in-fg); }
+.panel .stack { display: flex; flex-wrap: wrap; gap: 6px; }
+.panel .stack span { font-size: 12.5px; padding: 4px 10px; border-radius: 8px; background: var(--bg-elev-2); border: 1px solid var(--line); color: var(--fg); }
+.panel ul.api li {
+  font-family: var(--font-mono); font-size: 12px; padding: 7px 10px; border-radius: 8px; background: var(--bg-elev-2);
+  border: 1px solid var(--line); color: var(--fg); overflow-wrap: anywhere; display: flex; gap: 8px;
+}
+.panel ul.api li b { font-weight: 500; color: var(--wine-fg); flex: none; min-width: 44px; }
+.panel ul.api li b.ev { color: var(--in-fg); }
+.panel .conn { display: grid; gap: 6px; }
+.panel .conn button {
+  display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; text-align: left; width: 100%;
+  border: 1px solid var(--line); background: var(--bg-elev); border-radius: 10px; padding: 9px 12px; cursor: pointer;
+  transition: border-color .2s;
+}
+.panel .conn button:hover { border-color: var(--line-strong); }
+.panel .conn .dir { font-family: var(--font-mono); font-size: 13px; line-height: 1.4; }
+.panel .conn .dir.o { color: var(--wine-fg); }
+.panel .conn .dir.i { color: var(--in-fg); }
+.panel .conn strong { display: block; font-size: 13.5px; font-weight: 600; }
+.panel .conn small { display: block; color: var(--fg-2); font-size: 12.5px; }
+.panel .conn small .mono { color: var(--fg-3); font-size: 11.5px; }
+.drill-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 16px;
+  padding: 13px 16px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 600; font-size: 14.5px;
+  background: var(--wine); color: #fff; box-shadow: 0 10px 24px -10px var(--wine);
+  transition: transform .2s, filter .2s;
+}
+.drill-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+
+/* ---------- Bento ---------- */
+.bento-head { padding-block: 72px 22px; display: grid; gap: 10px; }
+.bento-head h2 { margin: 0; font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -0.03em; line-height: 1.1; font-weight: 700; text-wrap: balance; }
+.bento-head p { margin: 0; color: var(--fg-2); max-width: 68ch; }
+.bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+.tile {
+  min-width: 0; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--bg-elev); padding: 24px;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden;
+}
+.tile h3 { margin: 0; font-size: 19px; letter-spacing: -0.015em; line-height: 1.25; font-weight: 650; }
+.tile .k { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+.tile p { margin: 0; color: var(--fg-2); font-size: 14px; }
+.t-flow { grid-column: span 4; }
+.t-nums { grid-column: span 2; }
+.t-stack { grid-column: span 3; }
+.t-adr { grid-column: span 3; }
+.flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: s; }
+.flow li {
+  counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 10px 0; position: relative;
+  border-bottom: 1px dashed var(--line);
+}
+.flow li:last-child { border-bottom: 0; }
+.flow li::before {
+  content: counter(s); font-family: var(--font-mono); font-size: 12px; width: 26px; height: 26px; border-radius: 8px;
+  display: grid; place-items: center; background: var(--wine-soft); color: var(--wine-fg); border: 1px solid color-mix(in srgb, var(--wine-fg) 30%, transparent);
+}
+.flow b { font-weight: 600; }
+.flow span { display: block; color: var(--fg-2); font-size: 13.5px; }
+.flow code { font-family: var(--font-mono); font-size: 12px; color: var(--fg); background: var(--bg-elev-2); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
+.nums { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; margin-top: auto; }
+.nums div { display: grid; gap: 2px; }
+.nums strong { font-size: 34px; letter-spacing: -0.04em; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.nums small { color: var(--fg-2); font-size: 12.5px; line-height: 1.35; }
+.stackgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.stackgrid div { min-width: 0; }
+.stackgrid h5 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--fg); display: flex; gap: 8px; align-items: center; }
+.stackgrid h5 i { width: 8px; height: 8px; border-radius: 2px; background: var(--sw); }
+.stackgrid p { font-size: 13px; }
+.adr { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.adr li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; font-size: 14px; }
+.adr li b { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--fg-3); padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; }
+.adr li span { color: var(--fg-2); }
+.adr li span em { font-style: normal; color: var(--fg); font-weight: 600; }
+
+.site-foot { padding-block: 56px 40px; color: var(--fg-3); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+.site-foot a { color: var(--fg-2); }
+
+@media (max-width: 1000px) {
+  .t-flow, .t-nums, .t-stack, .t-adr { grid-column: span 6; }
+}
+@media (max-width: 720px) {
+  .brand span { display: none; }
+  .levels { order: 3; width: 100%; justify-content: space-between; }
+  .levels button { flex: 1; justify-content: center; padding: 7px 8px; }
+  .levels button .lt-long { display: none; }
+  .intro { padding-block: 26px 14px; }
+  .viewport { height: 64vh; border-radius: 16px; }
+  .hint { display: none; }
+  .stackgrid { grid-template-columns: 1fr; }
+  .tile { padding: 20px; }
+}
+@media (min-width: 721px) { .lt-short { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#nivel-1" aria-label="SISJOGOS, início">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <circle cx="15" cy="15" r="13" fill="none" stroke="var(--wine-fg)" stroke-width="2"/>
+        <circle cx="15" cy="15" r="7.5" fill="none" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <circle cx="15" cy="2" r="2.6" fill="var(--wine-fg)"/>
+        <circle cx="26.3" cy="21.5" r="2.6" fill="var(--fg-2)"/>
+        <circle cx="3.7" cy="21.5" r="2.6" fill="var(--fg-2)"/>
+      </svg>
+      <b>SISJOGOS</b>
+      <span>Jogos Bom de Ginga 2026 · C4 Model</span>
+    </a>
+    <nav class="levels" role="tablist" aria-label="Níveis do C4 Model">
+      <div class="pill" aria-hidden="true"></div>
+      <button role="tab" data-level="1" aria-selected="true"><span class="n">1</span><span class="lt-long">Contexto</span><span class="lt-short">Contexto</span></button>
+      <button role="tab" data-level="2" aria-selected="false"><span class="n">2</span><span class="lt-long">Containers</span><span class="lt-short">Containers</span></button>
+      <button role="tab" data-level="3" aria-selected="false"><span class="n">3</span><span class="lt-long">Componentes</span><span class="lt-short">API</span></button>
+    </nav>
+    <button class="icon-btn" id="themeBtn" aria-label="Alternar tema claro ou escuro" title="Tema (T)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="wrap intro" aria-live="polite">
+    <div class="crumbs" id="crumbs"></div>
+    <div class="eyebrow" id="eyebrow">Nível 1 · System Context</div>
+    <h1 id="lvTitle">Contexto do sistema</h1>
+    <p class="scope" id="lvScope"></p>
+  </section>
+
+  <section class="wrap">
+    <div class="tools">
+      <div class="filters" id="filters" aria-label="Filtrar por tipo de elemento"></div>
+      <div class="zoom" aria-label="Zoom do diagrama">
+        <button id="zOut" aria-label="Diminuir zoom" title="Diminuir (−)">−</button>
+        <output id="zVal">100%</output>
+        <button id="zIn" aria-label="Aumentar zoom" title="Aumentar (+)">+</button>
+        <button id="zFit" title="Resetar e ajustar à tela (0)">Resetar</button>
+      </div>
+    </div>
+
+    <div class="viewport" id="viewport">
+      <div class="stage" id="stage">
+        <svg class="edges" id="edges" aria-hidden="true">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--edge)"/></marker>
+            <marker id="ah-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--edge)"/></marker>
+            <marker id="ah-opt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--edge-opt)"/></marker>
+            <marker id="ah-out" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--wine-fg)"/></marker>
+            <marker id="ah-out-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--wine-fg)"/></marker>
+            <marker id="ah-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--in-fg)"/></marker>
+            <marker id="ah-in-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill: var(--in-fg)"/></marker>
+          </defs>
+          <g id="edgeLayer"></g>
+        </svg>
+        <div id="nodeLayer"></div>
+        <div id="labelLayer"></div>
+      </div>
+      <div class="hint"><span><kbd>arraste</kbd> mover</span><span><kbd>Ctrl</kbd> + roda zoom</span><span><kbd>duplo clique</kbd> entrar no nível</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> níveis</span></div>
+    </div>
+
+    <div class="legend" aria-label="Legenda">
+      <div class="grp">
+        <span class="t">Elementos</span>
+        <span class="it"><i class="sw person" style="--sw: var(--c-person)"></i>Pessoa</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-system)"></i>Sistema em foco</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-container)"></i>Container</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-component)"></i>Componente</span>
+        <span class="it"><i class="sw db" style="--sw: var(--c-container)"></i>Banco de dados</span>
+        <span class="it"><i class="sw" style="--sw: var(--c-external)"></i>Sistema externo</span>
+        <span class="it"><i class="sw opt" style="--sw: var(--c-external)"></i>Externo opcional</span>
+        <span class="it"><i class="sw bd"></i>Fronteira</span>
+      </div>
+      <span class="sep" aria-hidden="true"></span>
+      <div class="grp">
+        <span class="t">Relações</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge)" stroke-width="1.8"/></svg>Síncrona (HTTPS, REST, SQL)</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge)" stroke-width="1.8" stroke-dasharray="6 5"/></svg>Assíncrona (AMQP, SSE, evento)</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--edge-opt)" stroke-width="1.8" stroke-dasharray="2 5"/></svg>Opcional</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--wine-fg)" stroke-width="2.2"/></svg>Saída</span>
+        <span class="it"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--in-fg)" stroke-width="2.2"/></svg>Entrada</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="bento-head">
+      <div class="eyebrow">Por dentro</div>
+      <h2>Um campeonato inteiro rodando num notebook, sem internet</h2>
+      <p>O SISJOGOS gerencia de ponta a ponta as competições de capoeira dos Jogos Bom de Ginga 2026: 3 rodas ao mesmo tempo, 11 categorias e 3 árbitros avaliando cada jogo pelo tablet, num servidor local acessado pelo Wi-Fi do ginásio.</p>
+    </div>
+    <div class="bento">
+      <article class="tile t-flow">
+        <span class="k">Fluxo crítico</span>
+        <h3>Da nota do árbitro ao telão, em tempo real</h3>
+        <ol class="flow">
+          <li><div><b>3 árbitros lançam ao mesmo tempo</b><span>Cada um vê só os botões da sua função (Atleta A, Atleta B ou Geral) e envia <code>POST /api/avaliacoes/lancar</code>.</span></div></li>
+          <li><div><b>Security Filter Chain valida o JWT</b><span>Só o perfil ÁRBITRO passa por <code>@AcessoLancamentoNotas</code>.</span></div></li>
+          <li><div><b>Motor de avaliação</b><span>validator, processor e calculator. UNIQUE no banco impede nota duplicada; consolida só com as 3 notas.</span></div></li>
+          <li><div><b>Resultado = Pontos Técnicos − Penalidades</b><span>O jogo trava. Empate gera um novo jogo; W.O. desclassifica o ausente.</span></div></li>
+          <li><div><b>ResultadoProcessadoEvent, depois do commit</b><span>Chaveamento avança o vencedor na árvore e o publicador avisa o RabbitMQ.</span></div></li>
+          <li><div><b>CanalAoVivo transmite por SSE</b><span>Resultados, telão e monitoramento recebem o novo retrato da categoria. Sem broker, a entrega é local.</span></div></li>
+        </ol>
+      </article>
+      <article class="tile t-nums">
+        <span class="k">Em números</span>
+        <h3>Feito para o dia do evento</h3>
+        <div class="nums">
+          <div><strong>3</strong><small>rodas físicas simultâneas</small></div>
+          <div><strong>11</strong><small>categorias oficiais</small></div>
+          <div><strong>1.000+</strong><small>casos de teste no backend</small></div>
+          <div><strong>35</strong><small>migrations Flyway</small></div>
+          <div><strong>12</strong><small>domínios no monólito modular</small></div>
+          <div><strong>&lt; 2 s</strong><small>meta para recalcular a árvore</small></div>
+        </div>
+      </article>
+      <article class="tile t-stack">
+        <span class="k">Stack</span>
+        <h3>Tecnologias por camada</h3>
+        <div class="stackgrid">
+          <div><h5><i style="--sw: var(--c-container)"></i>Backend</h5><p>Java 21, Spring Boot 3.5, Spring Security (OAuth2 Resource Server, JWT RSA), Spring Data JPA, Spring AMQP, WebFlux só para SSE, springdoc.</p></div>
+          <div><h5><i style="--sw: var(--c-component)"></i>Frontend</h5><p>React 19, TypeScript, Vite, Ant Design, TanStack Query, Axios, React Router 7, fetch-event-source.</p></div>
+          <div><h5><i style="--sw: var(--c-system)"></i>Dados e tempo real</h5><p>MySQL 8 com Flyway e <span class="mono">ddl-auto=validate</span>, RabbitMQ 4.1 (fanout), Server-Sent Events.</p></div>
+          <div><h5><i style="--sw: var(--c-person)"></i>Infra</h5><p>Docker Compose, Nginx com HTTPS local, GitHub Actions, GHCR, runner self-hosted, Proxmox VE e cloud-init.</p></div>
+          <div><h5><i style="--sw: var(--wine)"></i>Observabilidade</h5><p>Prometheus e alertas, Grafana, Loki + Alloy, Uptime Kuma, cAdvisor, Glowroot (APM).</p></div>
+          <div><h5><i style="--sw: var(--c-external)"></i>Qualidade</h5><p>JUnit 5, Mockito, Testcontainers (MySQL e RabbitMQ reais), Allure, JaCoCo, SonarCloud.</p></div>
+        </div>
+      </article>
+      <article class="tile t-adr">
+        <span class="k">Decisões arquiteturais</span>
+        <h3>Por que é assim</h3>
+        <ul class="adr">
+          <li><b>ADR 1</b><span><em>Servidor local, offline.</em> Nenhuma nuvem em tempo de evento; o próprio backend emite o JWT.</span></li>
+          <li><b>ADR 2</b><span><em>API stateless com JWT (RSA).</em> O token carrega o perfil; árbitros, telão e mesa não dependem de sessão.</span></li>
+          <li><b>ADR 3</b><span><em>SSE em vez de WebSocket.</em> O fluxo é servidor → cliente e passa pelo Nginx sem complicação.</span></li>
+          <li><b>ADR 4</b><span><em>RabbitMQ só como sinal.</em> Desacopla quem altera de quem exibe; o MySQL é a única fonte oficial.</span></li>
+          <li><b>ADR 5</b><span><em>Flyway + validate.</em> A API não sobe se o schema divergir; migration aplicada nunca é editada.</span></li>
+          <li><b>ADR 6</b><span><em>Integridade no banco.</em> UNIQUE para ordem de jogo, avaliação por árbitro e histórico por atleta.</span></li>
+          <li><b>ADR 7</b><span><em>Uma VM de produção.</em> Mais simples de operar no dia do campeonato do que app e banco separados.</span></li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <footer class="wrap site-foot">
+    <span>SISJOGOS · Jogos Bom de Ginga 2026 · Arquitetura por Matheus Albuquerque</span>
+    <span>C4 Model de Simon Brown · HTML, CSS e JavaScript puros</span>
+  </footer>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-hidden="true" aria-labelledby="pTitle" role="dialog">
+  <header>
+    <div class="ph-top">
+      <span class="tbadge" id="pBadge">Container</span>
+      <button class="icon-btn close" id="pClose" aria-label="Fechar painel (Esc)" title="Fechar (Esc)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <h2 id="pTitle"></h2>
+    <div class="ptech" id="pTech"></div>
+  </header>
+  <div class="body" id="pBody"></div>
+</aside>
+
+<script>
+(() => {
+"use strict";
+
+/* ===================== Ícones ===================== */
+const ICON = {
+  person: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>',
+  system: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg>',
+  container: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
+  component: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+  db: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></svg>',
+  external: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 3.5 5.4 3.5 8.5s-1.1 5.9-3.5 8.5c-2.4-2.6-3.5-5.4-3.5-8.5s1.1-5.9 3.5-8.5z"/></svg>',
+  zoom: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>'
+};
+const TYPE_LABEL = { person: "Pessoa", system: "Sistema de software", container: "Container", component: "Componente", db: "Banco de dados", external: "Sistema externo" };
+const TYPE_HUE = { person: "var(--c-person)", system: "var(--c-system)", container: "var(--c-container)", component: "var(--c-component)", db: "var(--c-container)", external: "var(--c-external)" };
+const FILTERS = [
+  { id: "atores", label: "Atores", sw: "var(--c-person)", types: ["person"] },
+  { id: "internos", label: "Sistemas internos", sw: "var(--c-container)", types: ["system", "container", "component"] },
+  { id: "externos", label: "Sistemas externos", sw: "var(--c-external)", types: ["external"] },
+  { id: "dados", label: "Bancos de dados", sw: "var(--c-component)", types: ["db"] }
+];
+
+/* ===================== Dados da arquitetura (board do Miro + repositório) ===================== */
+const LEVELS = {
+  1: {
+    key: "Contexto", eyebrow: "Nível 1 · System Context", title: "Contexto do sistema",
+    scope: "O SISJOGOS e quem interage com ele. Durante o campeonato nenhum sistema externo é necessário: tudo roda num servidor local acessado pela rede do ginásio. GitHub e SonarCloud participam só do ciclo de desenvolvimento e implantação.",
+    size: [1440, 1040],
+    boundaries: [{ label: "Rede Wi-Fi do evento · CAIC", tag: "100% offline", members: ["sis"], pad: 36 }],
+    nodes: [
+      { id: "admin", type: "person", x: 40, y: 40, w: 240, title: "Administrador", tech: "Perfil ADMIN",
+        desc: "Configura cadastros, regulamento, usuários e perfis.",
+        resp: ["Cadastra atletas (nome, apelido, corda, equipe), árbitros e as 3 rodas", "Define o regulamento: 11 categorias, critérios, proibições e premiações", "Cria usuários e atribui perfis", "Configura formatos, tempos e ritmos dos jogos"],
+        stack: ["Navegador (Chrome, Safari, Edge)", "Desktop ou tablet"],
+        api: [["POST", "/api/auth/login"], ["CRUD", "/api/usuarios"], ["CRUD", "/api/atletas · /api/arbitros · /api/rodas"], ["CRUD", "/api/categorias · /api/criterio · /api/proibicao · /api/premiacoes"]],
+        rules: ["Acesso total (ADMIN)", "O primeiro ADMIN nasce na subida, por variáveis de ambiente; os demais pela tela", "Toda alteração fica na auditoria: quem, o quê e quando"] },
+      { id: "org", type: "person", x: 320, y: 40, w: 240, title: "Organizador / Assistente", tech: "Perfis ORGANIZADOR e ASSISTENTE",
+        desc: "Monta a programação, gera o chaveamento e conduz os jogos.",
+        resp: ["Monta a programação: períodos, blocos, rodas e categorias por bloco", "Gera o chaveamento automático por categoria", "Conduz os jogos, finaliza fases e registra W.O.", "Organiza lutas casadas e controla o telão"],
+        stack: ["Navegador", "Tablet na mesa de controle"],
+        api: [["CRUD", "/api/programacao/periodos · blocos · categorias"], ["POST", "/api/jogos/gerarJogos/{categoriaId}"], ["POST", "/api/chaveamento/finalizarFase/previa · /confirmar"], ["POST", "/api/lutas-casadas/confrontos/{id}/wo"], ["PUT", "/api/telao/admin/telas"]],
+        rules: ["Chaveamento travado não pode ser alterado", "Finalização de fase mostra uma prévia antes de confirmar", "Agenda amarrada a cada roda física"] },
+      { id: "arb", type: "person", x: 600, y: 40, w: 240, title: "Árbitro (3 por jogo)", tech: "Perfil ARBITRO",
+        desc: "Lança notas e penalidades da sua função (A, B ou Geral) na sua roda.",
+        resp: ["Avalia o jogo em andamento na sua roda", "Lança pontos técnicos e penalidades da sua função", "Envia a nota pelo tablet ou celular"],
+        stack: ["Tablet ou celular", "Wi-Fi do ginásio"],
+        api: [["GET", "/api/avaliacoes/avaliador"], ["POST", "/api/avaliacoes/lancar"], ["GET", "/api/avaliacoes/jogos/{jogoId}/lancamentos"]],
+        rules: ["Função fixa na banca: Atleta A, Atleta B ou Geral", "Vê só os botões da sua função", "Não avalia duas vezes o mesmo jogo", "Nota consolidada não pode ser alterada", "Pode lançar avaliação sem nenhuma proibição"] },
+      { id: "pub", type: "person", x: 880, y: 40, w: 240, title: "Público / Telão", tech: "Sem login",
+        desc: "Acompanha jogos, resultados e pódio, com nomes mascarados (LGPD).",
+        resp: ["Consulta jogos, resultados e pódio", "Vê o telão do ginásio com a programação e os avisos", "Recebe atualizações ao vivo sem recarregar a página"],
+        stack: ["Navegador", "Telão (TV ou projetor)"],
+        api: [["GET", "/api/resultados/categoria/{id}"], ["SSE", "/api/resultados/categoria/{id}/stream"], ["GET", "/api/resultados/lutas-casadas"], ["GET", "/api/telao/estado"]],
+        rules: ["Somente leitura", "Nomes mascarados para atender a LGPD", "Não precisa instalar aplicativo"] },
+      { id: "equipe", type: "person", x: 1160, y: 40, w: 240, title: "Equipe técnica", tech: "Desenvolvimento e operação",
+        desc: "Implanta, monitora, faz backup e responde a incidentes.",
+        resp: ["Publica novas versões pelo pipeline", "Acompanha painéis e alertas durante os 2 dias", "Garante backups e ensaia a restauração", "Segue o runbook de cada alerta"],
+        stack: ["Grafana", "Uptime Kuma", "Túnel SSH", "GitHub"],
+        api: [["HTTP", "Grafana :3000 · Uptime Kuma :3001"], ["SSH", "Túnel para API, Glowroot e Prometheus"]],
+        rules: ["Ferramentas administrativas só por túnel SSH", "Nunca apagar os volumes do banco", "Segredos ficam fora do Git, no .env da VM"] },
+      { id: "sis", type: "system", x: 440, y: 440, w: 480, title: "SISJOGOS", tech: "Sistema de software · servidor local no CAIC", drill: 2,
+        desc: "Gerencia o campeonato: cadastros, programação das 3 rodas, chaveamento, avaliação simultânea dos 3 árbitros, apuração, pódio e telão em tempo real. Opera 100% offline na rede Wi-Fi local.",
+        resp: ["Cadastros e regulamento do campeonato", "Programação do evento por período, bloco e roda", "Chaveamento automático com folgas (byes) e disputa de 3º lugar", "Avaliação simultânea pelos 3 árbitros", "Apuração, desempate, W.O., progressão e pódio", "Resultados ao vivo, telão e monitoramento das lutas"],
+        stack: ["Java 21", "Spring Boot 3.5", "React 19", "MySQL 8", "RabbitMQ 4.1", "Docker Compose", "Nginx"],
+        api: [["REST", "/api/** (JSON, Bearer JWT)"], ["SSE", "/api/resultados/.../stream · /api/monitoring/stream"], ["GET", "/api/saude (health check público)"]],
+        rules: ["Resultado = Pontos Técnicos − Penalidades", "Ciclo do jogo: AGENDADO → EM_ANDAMENTO → AVALIAÇÃO → APURAÇÃO → FINALIZADO", "Empate em qualquer fase gera um novo jogo", "O vencedor avança imediatamente na árvore", "Árvore recalculada em menos de 2 s", "Nenhuma nota perdida; auditoria imutável"] },
+      { id: "ngrok", type: "external", optional: true, x: 60, y: 480, w: 240, title: "ngrok", tech: "Sistema externo, opcional",
+        desc: "Túnel para demonstração fora do evento. Desligado durante o campeonato.",
+        resp: ["Expõe o sistema na internet para demonstrações", "Ativado por um perfil do Docker Compose"],
+        stack: ["ngrok", "Perfil ngrok no Compose"],
+        api: [["HTTPS", "Túnel até o Nginx"]],
+        rules: ["Desligado durante o campeonato", "Token e domínio só no .env da VM"] },
+      { id: "github", type: "external", x: 1140, y: 480, w: 260, title: "GitHub", tech: "Repositório · Actions · GHCR",
+        desc: "Código, CI com testes, build das imagens e deploy na VM.",
+        resp: ["Versiona o código (Git Flow: feature → develop → main)", "CI em cada push e PR: build Maven e testes com MySQL 8", "Workflow \"Preparar nova versão\" com versionamento semântico", "Deploy de produção pelo runner self-hosted dentro da VM"],
+        stack: ["GitHub Actions", "GitHub Container Registry", "Runner self-hosted", "Issues + Projects"],
+        api: [["CI", "push / PR para main e develop"], ["CD", "imagens api e web publicadas no GHCR"], ["CD", "backup, health check e rollback automático"]],
+        rules: ["Só a main publica em produção", "Se a nova versão não responder ao health check, volta sozinha para a anterior", "Cada deploy cria tag e release"] },
+      { id: "sonar", type: "external", x: 1140, y: 800, w: 260, title: "SonarCloud", tech: "Sistema externo",
+        desc: "Análise estática, cobertura (JaCoCo) e dívida técnica.",
+        resp: ["Analisa cada push e PR", "Mostra cobertura de testes e dívida técnica"],
+        stack: ["SonarCloud", "JaCoCo"],
+        api: [["CI", "Envio da análise pelo GitHub Actions"]],
+        rules: ["Participa só do desenvolvimento, nunca do evento"] }
+    ],
+    edges: [
+      { f: "admin", t: "sis", a: "Configura o campeonato", p: "HTTPS", fs: "b", ts: "t" },
+      { f: "org", t: "sis", a: "Opera o torneio", p: "HTTPS", fs: "b", ts: "t" },
+      { f: "arb", t: "sis", a: "Lança avaliações", p: "HTTPS · tablet", fs: "b", ts: "t" },
+      { f: "pub", t: "sis", a: "Consulta ao vivo", p: "HTTPS + SSE", fs: "b", ts: "t", k: "async" },
+      { f: "equipe", t: "sis", a: "Opera e monitora", p: "SSH · Grafana", fs: "b", ts: "t" },
+      { f: "equipe", t: "github", a: "Envia código e versões", p: "git · PR", fs: "b", ts: "t" },
+      { f: "github", t: "sis", a: "Faz deploy das imagens", p: "runner · GHCR", fs: "l", ts: "r" },
+      { f: "ngrok", t: "sis", a: "Túnel opcional", p: "HTTPS", fs: "r", ts: "l", k: "opt" },
+      { f: "github", t: "sonar", a: "Envia análise", p: "CI", fs: "b", ts: "t" }
+    ]
+  },
+
+  2: {
+    key: "Containers", eyebrow: "Nível 2 · Containers", title: "Containers e infraestrutura",
+    scope: "O que roda dentro da VM do evento. Produção usa o docker-compose.prod.yml com db, rabbitmq, api e web (ngrok opcional), mais o projeto de monitoramento. O MySQL é a única fonte oficial; o RabbitMQ só avisa que algo mudou.",
+    size: [1640, 1340], parent: "sis",
+    boundaries: [{ label: "SISJOGOS · VM Linux no Proxmox", tag: "Docker Compose", members: ["spa", "nginx", "api", "rabbit", "mysql", "obs", "backup"], pad: 34 }],
+    nodes: [
+      { id: "org2", type: "person", x: 40, y: 330, w: 240, title: "Organização", tech: "Admin · Organizador · Assistente",
+        desc: "Cadastros, regulamento, programação e torneio.", ref: "org",
+        resp: ["Opera cadastros, regulamento, programação e torneio pelas telas"], stack: ["Navegador"], api: [], rules: ["Permissões por perfil em cada rota"] },
+      { id: "arb2", type: "person", x: 40, y: 590, w: 240, title: "Árbitro", tech: "Perfil ARBITRO",
+        desc: "Avalia só os jogos da sua roda e da sua função.", ref: "arb",
+        resp: ["Lança as notas da sua função no tablet"], stack: ["Tablet ou celular"], api: [["POST", "/api/avaliacoes/lancar"]], rules: ["Vê só os botões da sua função", "Não avalia duas vezes"] },
+      { id: "pub2", type: "person", x: 40, y: 850, w: 240, title: "Público / Telão", tech: "Sem login",
+        desc: "Resultados, pódio e telão ao vivo.", ref: "pub",
+        resp: ["Acompanha resultados e telão ao vivo"], stack: ["Navegador", "Telão"], api: [["SSE", "/api/resultados/categoria/{id}/stream"]], rules: ["Somente leitura, nomes mascarados (LGPD)"] },
+      { id: "eq2", type: "person", x: 40, y: 1100, w: 240, title: "Equipe técnica", tech: "Operação",
+        desc: "Deploy, monitoramento e backup.", ref: "equipe",
+        resp: ["Acompanha painéis e alertas", "Responde a incidentes pelo runbook"], stack: ["Grafana", "Uptime Kuma", "SSH"], api: [], rules: ["Ferramentas administrativas só por túnel SSH"] },
+      { id: "ngrok2", type: "external", optional: true, x: 870, y: 30, w: 270, title: "ngrok", tech: "Externo opcional",
+        desc: "Túnel de demonstração (perfil ngrok do Compose).",
+        resp: ["Expõe o Nginx na internet para demonstração"], stack: ["ngrok"], api: [["HTTPS", "Túnel até o sisjogos-web"]], rules: ["Desligado durante o campeonato"] },
+      { id: "github2", type: "external", x: 1300, y: 30, w: 300, title: "GitHub Actions + GHCR", tech: "Sistema externo",
+        desc: "CI, build das imagens versionadas e deploy pelo runner na VM.", ref: "github",
+        resp: ["Constrói as imagens da API e do frontend", "Publica no GHCR e sobe a nova versão pelo runner na VM", "Agenda o backup do banco e sobe o monitoramento"],
+        stack: ["GitHub Actions", "GHCR", "Runner self-hosted"], api: [["CD", "docker compose pull + up"], ["CD", "health check em /api/saude"]], rules: ["Backup do banco antes de cada deploy", "Rollback automático se o health check falhar"] },
+      { id: "spa", type: "container", x: 440, y: 330, w: 270, title: "Aplicação Web (SPA)", tech: "React 19 · TypeScript · Vite · Ant Design",
+        desc: "Roda no navegador (Chrome, Safari, Edge). TanStack Query + Axios; SSE com fetch-event-source.",
+        resp: ["Telas organizadas por feature, espelhando os domínios do backend", "Cache e sincronização do estado do servidor com TanStack Query", "Recebe resultados ao vivo por SSE com o token no cabeçalho", "Interface responsiva com botões grandes, pensada para tablets"],
+        stack: ["React 19", "TypeScript", "Vite", "Ant Design", "TanStack Query", "Axios", "React Router 7", "fetch-event-source"],
+        api: [["REST", "/api/** com Bearer JWT"], ["SSE", "/api/resultados/.../stream · /api/monitoring/stream"]],
+        rules: ["As rotas visíveis dependem do perfil do usuário", "Área pública sem login", "Paleta do grupo: branco, preto e vinho"] },
+      { id: "nginx", type: "container", x: 870, y: 330, w: 270, title: "sisjogos-web", tech: "Nginx",
+        desc: "Serve o build da SPA e faz proxy reverso de /api. HTTPS com certificado local.",
+        resp: ["Serve os arquivos estáticos do React", "Repassa /api para o container da API", "Liga o TLS sozinho quando encontra o certificado"],
+        stack: ["Nginx", "TLS com CA própria do evento"],
+        api: [["PROXY", "/api → api:8080"], ["HTTPS", "única porta exposta na rede"]],
+        rules: ["A CA do evento é instalada nos tablets", "Não repassa o Swagger", "API, banco e broker ficam só em 127.0.0.1"] },
+      { id: "api", type: "container", x: 1300, y: 330, w: 300, title: "sisjogos-api", tech: "Java 21 · Spring Boot 3.5", drill: 3,
+        desc: "REST/JSON e SSE, Spring Security (JWT), Flyway, Swagger e agente Glowroot.",
+        resp: ["Expõe a API REST de 12 domínios", "Concentra 100% das regras de negócio nos services", "Emite e valida o JWT (par de chaves RSA)", "Transmite resultados ao vivo por SSE", "Aplica as migrations do Flyway na subida"],
+        stack: ["Java 21", "Spring Boot 3.5", "Spring Security", "OAuth2 Resource Server", "Spring Data JPA", "Spring AMQP", "WebFlux (SSE)", "Flyway", "springdoc", "Glowroot"],
+        api: [["REST", "/api/** :8080"], ["GET", "/api/saude"], ["DOC", "/api/swagger-ui.html (só na própria máquina)"], ["APM", "Glowroot :4000 por túnel SSH"]],
+        rules: ["Stateless: o token carrega o perfil", "Não sobe se o schema divergir (ddl-auto=validate)", "Conecta ao banco com usuário dedicado, nunca root"] },
+      { id: "rabbit", type: "container", x: 870, y: 690, w: 270, title: "RabbitMQ 4.1", tech: "Message broker · AMQP",
+        desc: "Exchange fanout de alterações do torneio. Mensagens não persistentes.",
+        resp: ["Distribui o aviso de que uma categoria mudou", "Uma fila por instância da API", "Prepara o sistema para mais de uma instância"],
+        stack: ["RabbitMQ 4.1", "AMQP 0-9-1"],
+        api: [["EVT", "exchange fanout alteracoes-torneio"], ["AMQP", ":5672 só em 127.0.0.1"]],
+        rules: ["Leva só o id da categoria, nunca o resultado", "Se cair, a API entrega direto aos painéis locais (degradação graciosa)"] },
+      { id: "mysql", type: "db", x: 1300, y: 690, w: 300, title: "MySQL 8", tech: "Banco relacional",
+        desc: "Fonte oficial do campeonato. Schema por Flyway, ddl-auto=validate.",
+        resp: ["Guarda cadastros, chaveamento, avaliações e resultados", "Mantém a auditoria das alterações", "Garante integridade com restrições UNIQUE"],
+        stack: ["MySQL 8", "Flyway (35 migrations)", "Volume Docker próprio"],
+        api: [["JDBC", ":3306 só em 127.0.0.1"]],
+        rules: ["Migration aplicada nunca é editada", "UNIQUE em ordem de jogo, avaliação por árbitro e histórico por atleta", "Usuário dedicado à aplicação"] },
+      { id: "obs", type: "container", x: 440, y: 1000, w: 700, title: "Observabilidade", tech: "Prometheus · Grafana · Loki + Alloy · Uptime Kuma · cAdvisor · exporters",
+        desc: "Projeto separado na VM. Grafana e Uptime Kuma na rede; Prometheus, Glowroot e API só por túnel SSH.",
+        resp: ["Coleta métricas de RabbitMQ, MySQL, VM, containers e /api/saude", "Centraliza os logs de todos os containers por 15 dias", "Página de status para o telão", "Alertas com runbook"],
+        stack: ["Prometheus", "Grafana", "Loki", "Alloy", "Uptime Kuma", "cAdvisor", "blackbox exporter", "mysql exporter"],
+        api: [["HTTP", "Grafana :3000 · Uptime Kuma :3001"], ["SSH", "Prometheus :9090 por túnel"]],
+        rules: ["Alertas: sistema fora, MySQL fora, container em loop, disco cheio, lentidão > 2 s", "100% offline, sem serviço em nuvem"] },
+      { id: "backup", type: "container", x: 1300, y: 1000, w: 300, title: "Backups do banco", tech: "Arquivos · cron a cada 10 min",
+        desc: "O script backup-banco.sh grava dumps na pasta backups/ da VM.",
+        resp: ["Gera dumps do banco a cada 10 minutos", "Faz um backup extra antes de cada deploy", "A VM inteira tem backup diário no Proxmox"],
+        stack: ["cron", "mysqldump", "vzdump (Proxmox)"],
+        api: [["CRON", "*/10 * * * * backup-banco.sh"]],
+        rules: ["Cópia externa (pendrive ou HD) antes do evento", "Ensaio de restauração planejado"] }
+    ],
+    edges: [
+      { f: "org2", t: "spa", a: "Usa", p: "HTTPS", fs: "r", ts: "l" },
+      { f: "arb2", t: "spa", a: "Lança notas", p: "HTTPS · tablet", fs: "r", ts: "l" },
+      { f: "pub2", t: "spa", a: "Acompanha", p: "HTTPS + SSE", fs: "r", ts: "b", k: "async" },
+      { f: "eq2", t: "obs", a: "Painéis e alertas", p: "Grafana · Uptime Kuma", fs: "r", ts: "l" },
+      { f: "spa", t: "nginx", a: "Chama /api", p: "REST/JSON + SSE", fs: "r", ts: "l" },
+      { f: "nginx", t: "api", a: "Proxy reverso", p: "HTTP :8080", fs: "r", ts: "l" },
+      { f: "api", t: "mysql", a: "Lê e grava", p: "JPA · JDBC :3306", fs: "b", ts: "t" },
+      { f: "api", t: "rabbit", a: "Publica e consome", p: "AMQP :5672", fs: "b", ts: "t", k: "async", both: true },
+      { f: "backup", t: "mysql", a: "Gera dump", p: "mysqldump", fs: "t", ts: "b" },
+      { f: "obs", t: "rabbit", a: "Coleta métricas", p: "Prometheus scrape", fs: "t", ts: "b" },
+      { f: "github2", t: "api", a: "Deploy das imagens", p: "runner + GHCR", fs: "b", ts: "t" },
+      { f: "ngrok2", t: "nginx", a: "Túnel opcional", p: "HTTPS", fs: "b", ts: "t", k: "opt" }
+    ]
+  },
+
+  3: {
+    key: "Componentes", eyebrow: "Nível 3 · Componentes", title: "Componentes da API",
+    scope: "Zoom no container sisjogos-api. Monólito modular em camadas (Controller → Service → Repository), domínios em domain/ e configuração em settings/. Comandos entram por REST; efeitos colaterais (progressão e painéis) saem por eventos.",
+    size: [1980, 1480], parent: "api",
+    boundaries: [{ label: "sisjogos-api · Spring Boot 3.5", tag: "pacote system.JogosBomDeGinga", members: ["sec", "ctrl", "svc", "motor", "repo", "chave", "evt", "trans", "canal", "pubr"], pad: 34 }],
+    nodes: [
+      { id: "spa3", type: "container", x: 40, y: 180, w: 240, title: "Aplicação Web (SPA)", tech: "React 19 + TypeScript", ref: "spa",
+        desc: "Telas por feature, Axios + TanStack Query.",
+        resp: ["Chama a API com o token no cabeçalho", "Assina os streams SSE dos painéis"], stack: ["React 19", "Axios", "TanStack Query"], api: [["REST", "/api/**"]], rules: [] },
+      { id: "sec", type: "component", x: 440, y: 180, w: 260, title: "Security Filter Chain", tech: "Spring Security + OAuth2 Resource Server",
+        desc: "Valida o JWT e aplica @AcessoAdmin, @AcessoOrganizacao, @AcessoTorneio, @AcessoLancamentoNotas e @AcessoPublico.",
+        resp: ["Valida assinatura e validade do JWT (RSA)", "Converte o perfil do token em autoridades", "Aplica as anotações de acesso em cada rota", "Libera a área pública e o /api/saude"],
+        stack: ["Spring Security", "OAuth2 Resource Server", "Nimbus JOSE + JWT"],
+        api: [["POST", "/api/auth/login (emite o token)"], ["GET", "/api/auth/me"]],
+        rules: ["Tabela de acesso por perfil testada automaticamente", "Sem sessão em memória (stateless)"] },
+      { id: "ctrl", type: "component", x: 860, y: 180, w: 260, title: "Controllers REST", tech: "Spring MVC · @Valid · DTO request/response",
+        desc: "Entrada HTTP dos 12 domínios: cadastros, regulamento, formatos, programação, torneio, assessment, resultados, telão, dashboard, monitoring e autenticação.",
+        resp: ["Recebem e validam o JSON com Bean Validation", "Convertem para DTOs de request", "Devolvem DTOs de response que escondem dados sensíveis", "Nenhuma regra de negócio"],
+        stack: ["Spring Web MVC", "Bean Validation", "springdoc-openapi"],
+        api: [["REST", "/atletas · /arbitros · /rodas · /categorias"], ["REST", "/programacao/* · /jogos · /chaveamento · /lutas-casadas"], ["REST", "/avaliacoes · /resultados · /telao · /dashboard · /monitoring"]],
+        rules: ["Erros padronizados pelo GlobalExceptionHandler"] },
+      { id: "svc", type: "component", x: 1280, y: 180, w: 260, title: "Services", tech: "interface + impl · @Transactional",
+        desc: "100% das regras de negócio: programação, chaveamento, apuração, progressão, desempate e W.O.",
+        resp: ["Implementam as regras de cada domínio", "Controlam as transações", "Lançam RegraNegocioException quando uma regra é violada"],
+        stack: ["Spring", "@Transactional"],
+        api: [],
+        rules: ["Empate gera um novo jogo", "W.O. desclassifica o ausente", "Resultado finalizado não muda", "Chaveamento travado não muda"] },
+      { id: "motor", type: "component", x: 650, y: 540, w: 260, title: "Motor de avaliação", tech: "assessment/avaliacao",
+        desc: "validator, processor, calculator, resolver, distributor, finder e factory. Consolida só com as 3 notas.",
+        resp: ["Valida se o árbitro pode avaliar aquele jogo", "Processa o lançamento da função (A, B ou Geral)", "Calcula Pontos Técnicos − Penalidades", "Consolida quando as 3 notas chegam e trava o jogo"],
+        stack: ["Validator", "Processor", "Calculator", "Resolver", "Distributor", "Finder", "Factory"],
+        api: [["POST", "/api/avaliacoes/lancar"], ["GET", "/api/avaliacoes/validar"], ["EVT", "ResultadoProcessadoEvent"]],
+        rules: ["Impede avaliação duplicada", "Impede alterar avaliação consolidada", "Aceita avaliação sem proibição"] },
+      { id: "repo", type: "component", x: 1280, y: 540, w: 260, title: "Repositories + Mappers", tech: "Spring Data JPA · Entity ↔ DTO",
+        desc: "Acesso a dados e conversão entre entidade e DTO. Locks e UNIQUE impedem nota e avanço duplicados.",
+        resp: ["Consultas e gravação com Spring Data JPA", "Mapeiam entidades para DTOs", "Usam locks onde há concorrência (3 árbitros, 3 rodas)"],
+        stack: ["Spring Data JPA", "Hibernate", "Mappers"],
+        api: [["SQL", "JPA/Hibernate · JDBC"]],
+        rules: ["Integridade garantida também no banco (UNIQUE)"] },
+      { id: "chave", type: "component", x: 440, y: 880, w: 260, title: "Chaveamento e progressão", tech: "torneio/chaveamento",
+        desc: "Generator + factory, byes, trava, finalização de fase, 3º lugar e lutas casadas.",
+        resp: ["Gera a árvore por categoria com folgas quando o número é ímpar", "Avança o vencedor na hora", "Monta a disputa de 3º lugar e o pódio", "Finaliza a fase com prévia e confirmação"],
+        stack: ["ChaveamentoFactory", "ChaveamentoGenerator", "Strategy"],
+        api: [["GET", "/api/chaveamento/categoria/{id}/arvore"], ["POST", "/api/chaveamento/finalizarFase/confirmar"]],
+        rules: ["Impede avanço duplicado", "Árvore recalculada em menos de 2 s"] },
+      { id: "evt", type: "component", x: 860, y: 880, w: 260, title: "Eventos de domínio", tech: "Spring ApplicationEvent",
+        desc: "ResultadoProcessadoEvent e AlteracaoTorneioEventListener, disparados depois do commit.",
+        resp: ["Desacoplam a avaliação da progressão e dos painéis", "Só disparam depois que a transação foi confirmada"],
+        stack: ["ApplicationEvent", "@TransactionalEventListener"],
+        api: [["EVT", "ResultadoProcessadoEvent"], ["EVT", "AlteracaoTorneioEvent"]],
+        rules: ["Nada é publicado se a transação falhar"] },
+      { id: "trans", type: "component", x: 1280, y: 880, w: 260, title: "Transversais", tech: "settings/",
+        desc: "GlobalExceptionHandler, LGPD (mascara nomes), auditoria JPA, /saude, Swagger e CORS.",
+        resp: ["Tratamento central de exceções", "Mascara nomes nas respostas públicas", "Registra quem alterou o quê e quando", "Health check para Docker, deploy e Prometheus"],
+        stack: ["@RestControllerAdvice", "Auditoria JPA", "springdoc", "CORS"],
+        api: [["GET", "/api/saude"]],
+        rules: ["Logs de auditoria imutáveis", "Dados pessoais marcados para LGPD"] },
+      { id: "canal", type: "component", x: 440, y: 1200, w: 260, title: "CanalAoVivo (SSE)", tech: "settings/tempoReal · Reactor",
+        desc: "Monta o retrato da categoria uma vez e transmite a resultados, telão e monitoring.",
+        resp: ["Mantém os assinantes de cada categoria", "Calcula o retrato uma vez e envia para todos", "Testado com 200 espectadores simultâneos"],
+        stack: ["Spring WebFlux", "Reactor Sinks", "Server-Sent Events"],
+        api: [["SSE", "/api/resultados/categoria/{id}/stream"], ["SSE", "/api/monitoring/stream"]],
+        rules: ["Fluxo só do servidor para o cliente"] },
+      { id: "pubr", type: "component", x: 1280, y: 1200, w: 260, title: "Publicador / Consumidor", tech: "settings/mensageria · Spring AMQP",
+        desc: "Publica o id da categoria alterada; sem broker, entrega direto aos assinantes locais.",
+        resp: ["Publica no exchange fanout", "Consome a fila da própria instância", "Cai para entrega local se o RabbitMQ estiver fora"],
+        stack: ["Spring AMQP", "RabbitTemplate", "@RabbitListener"],
+        api: [["EVT", "alteracoes-torneio (fanout)"]],
+        rules: ["Degradação graciosa sem broker"] },
+      { id: "mysql3", type: "db", x: 1700, y: 540, w: 240, title: "MySQL 8", tech: "Banco relacional", ref: "mysql",
+        desc: "Migrations Flyway.",
+        resp: ["Fonte oficial do campeonato"], stack: ["MySQL 8", "Flyway"], api: [["JDBC", ":3306"]], rules: ["ddl-auto=validate"] },
+      { id: "rabbit3", type: "container", x: 1700, y: 1200, w: 240, title: "RabbitMQ 4.1", tech: "Fanout alteracoes-torneio", ref: "rabbit",
+        desc: "Sinal não persistente.",
+        resp: ["Avisa as instâncias que uma categoria mudou"], stack: ["RabbitMQ 4.1"], api: [["AMQP", ":5672"]], rules: ["Mensagens não persistentes"] }
+    ],
+    edges: [
+      { f: "spa3", t: "sec", a: "Chama /api", p: "REST/JSON · Bearer JWT", fs: "r", ts: "l" },
+      { f: "sec", t: "ctrl", a: "Autoriza por perfil", p: "@Acesso*", fs: "r", ts: "l" },
+      { f: "ctrl", t: "svc", a: "Chama com DTO", p: "Java", fs: "r", ts: "l" },
+      { f: "svc", t: "repo", a: "Persiste", p: "@Transactional", fs: "b", ts: "t" },
+      { f: "ctrl", t: "motor", a: "Lança avaliação", p: "POST /avaliacoes/lancar", fs: "b", ts: "t" },
+      { f: "motor", t: "repo", a: "Grava lançamento", p: "JPA", fs: "r", ts: "l" },
+      { f: "motor", t: "evt", a: "Resultado consolidado", p: "ApplicationEvent", fs: "b", ts: "t", k: "async" },
+      { f: "evt", t: "chave", a: "Avança vencedor ou gera desempate", p: "após o commit", fs: "l", ts: "r", k: "async" },
+      { f: "evt", t: "pubr", a: "Categoria alterada", p: "listener", fs: "b", ts: "l", k: "async" },
+      { f: "pubr", t: "canal", a: "Notifica assinantes", p: "Reactor Sink", fs: "l", ts: "r", k: "async" },
+      { f: "repo", t: "mysql3", a: "SQL", p: "JPA/Hibernate · JDBC", fs: "r", ts: "l" },
+      { f: "pubr", t: "rabbit3", a: "Publica e consome", p: "AMQP", fs: "r", ts: "l", k: "async", both: true },
+      { f: "canal", t: "spa3", a: "Retrato ao vivo", p: "SSE", fs: "l", ts: "b", k: "async" }
+    ]
+  }
+};
+
+/* ===================== Estado e referências ===================== */
+const $ = (s, r = document) => r.querySelector(s);
+const viewport = $("#viewport"), stage = $("#stage"), svg = $("#edges"), edgeLayer = $("#edgeLayer");
+const nodeLayer = $("#nodeLayer"), labelLayer = $("#labelLayer");
+const panel = $("#panel"), scrim = $("#scrim");
+const state = { level: 1, scale: 1, tx: 0, ty: 0, hidden: new Set(), selected: null, nodes: {}, edges: [] };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento */ } }
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ===================== Tema ===================== */
+const root = document.documentElement;
+const savedTheme = store.get("c4-theme");
+if (savedTheme === "light") root.setAttribute("data-theme", "light");
+$("#themeBtn").addEventListener("click", toggleTheme);
+function toggleTheme() {
+  const light = root.getAttribute("data-theme") !== "light";
+  if (light) root.setAttribute("data-theme", "light"); else root.removeAttribute("data-theme");
+  store.set("c4-theme", light ? "light" : "dark");
+}
+
+/* ===================== Abas ===================== */
+const tabs = [...document.querySelectorAll(".levels button")];
+tabs.forEach(b => b.addEventListener("click", () => goLevel(+b.dataset.level)));
+function movePill() {
+  const active = tabs.find(b => b.getAttribute("aria-selected") === "true");
+  const pill = $(".levels .pill");
+  pill.style.left = active.offsetLeft + "px";
+  pill.style.width = active.offsetWidth + "px";
+}
+
+/* ===================== Filtros ===================== */
+function renderFilters() {
+  const L = LEVELS[state.level];
+  $("#filters").innerHTML = FILTERS.map(f => {
+    const ct = L.nodes.filter(n => f.types.includes(n.type)).length;
+    return `<button class="chip" data-f="${f.id}" aria-pressed="${!state.hidden.has(f.id)}" ${ct ? "" : "disabled"} style="--sw:${f.sw}">
+      <i class="sw"></i>${f.label}<span class="ct">${ct}</span></button>`;
+  }).join("");
+  $("#filters").querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+    const id = c.dataset.f;
+    state.hidden.has(id) ? state.hidden.delete(id) : state.hidden.add(id);
+    c.setAttribute("aria-pressed", !state.hidden.has(id));
+    applyFilters();
+  }));
+}
+function groupOf(type) { return FILTERS.find(f => f.types.includes(type)).id; }
+function applyFilters() {
+  Object.values(state.nodes).forEach(n => n.el.classList.toggle("filtered", state.hidden.has(groupOf(n.d.type))));
+  state.edges.forEach(e => {
+    const off = state.hidden.has(groupOf(state.nodes[e.f].d.type)) || state.hidden.has(groupOf(state.nodes[e.t].d.type));
+    [e.path, e.label].forEach(x => x.classList.toggle("filtered", off));
+  });
+}
+
+/* ===================== Renderização do nível ===================== */
+function render() {
+  const L = LEVELS[state.level];
+  const [W, H] = L.size;
+  stage.style.width = W + "px"; stage.style.height = H + "px";
+  svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  nodeLayer.innerHTML = ""; labelLayer.innerHTML = ""; edgeLayer.innerHTML = "";
+  stage.querySelectorAll(".boundary").forEach(b => b.remove());
+  state.nodes = {}; state.edges = [];
+
+  L.nodes.forEach(d => {
+    const el = document.createElement("button");
+    el.className = `node t-${d.type}${d.optional ? " optional" : ""}`;
+    el.style.left = d.x + "px"; el.style.top = d.y + "px"; el.style.width = d.w + "px";
+    el.dataset.id = d.id;
+    el.setAttribute("aria-label", `${d.title}, ${TYPE_LABEL[d.type]}. Abrir detalhes.`);
+    const drill = d.drill ? `<span class="drill" role="button" tabindex="-1" data-drill="${d.drill}" title="Entrar no Nível ${d.drill}" aria-label="Entrar no Nível ${d.drill}">${ICON.zoom}</span>` : "";
+    el.innerHTML = `<div class="top"><span class="ico">${ICON[d.type]}</span><span class="badge">${d.optional ? "Externo opcional" : TYPE_LABEL[d.type]}</span>${drill}</div>
+      <h3>${esc(d.title)}</h3><div class="tech">[${esc(d.tech)}]</div><p>${esc(d.desc)}</p>`;
+    nodeLayer.appendChild(el);
+    state.nodes[d.id] = { d, el };
+  });
+
+  // medidas reais (o texto define a altura)
+  Object.values(state.nodes).forEach(n => {
+    n.box = { x: n.d.x, y: n.d.y, w: n.el.offsetWidth, h: n.el.offsetHeight };
+  });
+
+  // fronteiras calculadas a partir dos membros
+  (L.boundaries || []).forEach(b => {
+    const boxes = b.members.map(id => state.nodes[id].box);
+    const x1 = Math.min(...boxes.map(r => r.x)) - b.pad, y1 = Math.min(...boxes.map(r => r.y)) - b.pad - 8;
+    const x2 = Math.max(...boxes.map(r => r.x + r.w)) + b.pad, y2 = Math.max(...boxes.map(r => r.y + r.h)) + b.pad;
+    const el = document.createElement("div");
+    el.className = "boundary";
+    Object.assign(el.style, { left: x1 + "px", top: y1 + "px", width: (x2 - x1) + "px", height: (y2 - y1) + "px" });
+    el.innerHTML = `<span class="bl">${esc(b.label)}<i>${esc(b.tag)}</i></span>`;
+    stage.insertBefore(el, svg);
+  });
+
+  buildEdges(L);
+  bindNodes();
+  renderFilters();
+  applyFilters();
+  updateIntro();
+}
+
+/* ---------- Setas: portas distribuídas por lado e curvas de Bézier ---------- */
+function sidePoint(box, side, frac) {
+  const { x, y, w, h } = box;
+  if (side === "t") return [x + w * frac, y];
+  if (side === "b") return [x + w * frac, y + h];
+  if (side === "l") return [x, y + h * frac];
+  return [x + w, y + h * frac];
+}
+const NORMAL = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] };
+function center(b) { return [b.x + b.w / 2, b.y + b.h / 2]; }
+
+function buildEdges(L) {
+  // agrupa as pontas por (nó, lado) para espaçar as portas
+  const ports = {};
+  L.edges.forEach((e, i) => {
+    [["f", e.f, e.fs, e.t], ["t", e.t, e.ts, e.f]].forEach(([end, id, side, other]) => {
+      const key = id + ":" + side;
+      (ports[key] = ports[key] || []).push({ i, end, other, side });
+    });
+  });
+  const frac = {};
+  Object.values(ports).forEach(list => {
+    const horiz = list[0].side === "t" || list[0].side === "b";
+    list.sort((a, b) => {
+      const ca = center(state.nodes[a.other].box), cb = center(state.nodes[b.other].box);
+      return horiz ? ca[0] - cb[0] : ca[1] - cb[1];
+    });
+    const n = list.length;
+    list.forEach((p, k) => {
+      const f = n === 1 ? 0.5 : 0.22 + (0.56 * k) / (n - 1);
+      frac[p.i + p.end] = f;
+    });
+  });
+
+  const placed = [];
+  const nodeRects = Object.values(state.nodes).map(n => n.box);
+
+  L.edges.forEach((e, i) => {
+    const A = state.nodes[e.f].box, B = state.nodes[e.t].box;
+    const p0 = sidePoint(A, e.fs, frac[i + "f"]), p3 = sidePoint(B, e.ts, frac[i + "t"]);
+    const n0 = NORMAL[e.fs], n3 = NORMAL[e.ts];
+    // recuo pequeno para a ponta da seta não encostar no card
+    const gap = 3;
+    const s = [p0[0] + n0[0] * gap, p0[1] + n0[1] * gap];
+    const t = [p3[0] + n3[0] * (gap + 4), p3[1] + n3[1] * (gap + 4)];
+    const dist = Math.hypot(t[0] - s[0], t[1] - s[1]);
+    const k = Math.max(36, Math.min(dist * 0.45, 220));
+    const c1 = [s[0] + n0[0] * k, s[1] + n0[1] * k], c2 = [t[0] + n3[0] * k, t[1] + n3[1] * k];
+    const d = `M${s[0].toFixed(1)} ${s[1].toFixed(1)} C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${t[0].toFixed(1)} ${t[1].toFixed(1)}`;
+
+    const ns = "http://www.w3.org/2000/svg";
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", `edge ${e.k || "sync"}${e.both ? " both" : ""}`);
+    const hit = document.createElementNS(ns, "path");
+    hit.setAttribute("d", d); hit.setAttribute("class", "ehit");
+    edgeLayer.appendChild(path); edgeLayer.appendChild(hit);
+
+    const label = document.createElement("div");
+    label.className = "elabel";
+    label.innerHTML = `<span>${esc(e.a)}</span><span class="p">[${esc(e.p)}]</span>`;
+    labelLayer.appendChild(label);
+
+    // escolhe a posição do rótulo ao longo da curva sem colidir com cards e outros rótulos
+    const lw = label.offsetWidth, lh = label.offsetHeight;
+    const bez = tt => {
+      const u = 1 - tt;
+      return [
+        u*u*u*s[0] + 3*u*u*tt*c1[0] + 3*u*tt*tt*c2[0] + tt*tt*tt*t[0],
+        u*u*u*s[1] + 3*u*u*tt*c1[1] + 3*u*tt*tt*c2[1] + tt*tt*tt*t[1]
+      ];
+    };
+    const cands = [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8];
+    let best = null, bestScore = Infinity;
+    for (const tt of cands) {
+      const [cx, cy] = bez(tt);
+      const r = { x: cx - lw / 2 - 4, y: cy - lh / 2 - 4, w: lw + 8, h: lh + 8 };
+      let score = 0;
+      nodeRects.forEach(nr => { score += overlap(r, nr) * 3; });
+      placed.forEach(pr => { score += overlap(r, pr) * 2; });
+      score += Math.abs(tt - 0.5) * 40;
+      if (score < bestScore) { bestScore = score; best = { cx, cy, r }; }
+      if (score <= Math.abs(tt - 0.5) * 40) break;
+    }
+    placed.push(best.r);
+    label.style.left = best.cx + "px"; label.style.top = best.cy + "px";
+
+    const rec = { ...e, i, path, hit, label };
+    state.edges.push(rec);
+    const over = () => highlightEdge(rec, true), out = () => highlightEdge(rec, false);
+    hit.addEventListener("pointerenter", over); hit.addEventListener("pointerleave", out);
+    label.addEventListener("pointerenter", over); label.addEventListener("pointerleave", out);
+  });
+}
+function overlap(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+/* ---------- Destaque de conexões ---------- */
+function clearHl() {
+  stage.classList.remove("focus");
+  stage.querySelectorAll(".hl,.nb,.e-in,.e-out").forEach(x => x.classList.remove("hl", "nb", "e-in", "e-out"));
+}
+function highlightNode(id) {
+  clearHl();
+  if (!id) return;
+  stage.classList.add("focus");
+  state.nodes[id].el.classList.add("hl");
+  state.edges.forEach(e => {
+    if (e.f === id || e.t === id) {
+      const cls = e.f === id ? "e-out" : "e-in";
+      e.path.classList.add(cls); e.label.classList.add(cls);
+      state.nodes[e.f === id ? e.t : e.f].el.classList.add("nb");
+    }
+  });
+}
+function highlightEdge(e, on) {
+  if (dragging) return;
+  if (!on) { state.selected ? highlightNode(state.selected) : clearHl(); return; }
+  clearHl();
+  stage.classList.add("focus");
+  e.path.classList.add("e-out"); e.label.classList.add("e-out");
+  state.nodes[e.f].el.classList.add("hl"); state.nodes[e.t].el.classList.add("nb");
+}
+
+function bindNodes() {
+  Object.values(state.nodes).forEach(({ d, el }) => {
+    el.addEventListener("pointerenter", () => { if (!dragging) highlightNode(d.id); });
+    el.addEventListener("pointerleave", () => { if (!dragging) state.selected ? highlightNode(state.selected) : clearHl(); });
+    el.addEventListener("focus", () => highlightNode(d.id));
+    el.addEventListener("blur", () => state.selected ? highlightNode(state.selected) : clearHl());
+    el.addEventListener("click", ev => {
+      if (moved) return;
+      const dr = ev.target.closest("[data-drill]");
+      if (dr) { ev.stopPropagation(); goLevel(+dr.dataset.drill, d.id); return; }
+      openPanel(d.id);
+    });
+    el.addEventListener("dblclick", () => { if (d.drill) goLevel(d.drill, d.id); });
+  });
+}
+
+/* ===================== Cabeçalho e trilha ===================== */
+function updateIntro() {
+  const L = LEVELS[state.level];
+  $("#eyebrow").textContent = L.eyebrow;
+  $("#lvTitle").innerHTML = esc(L.title);
+  $("#lvScope").textContent = L.scope;
+  const trail = [[1, "SISJOGOS"], [2, "Containers"], [3, "sisjogos-api"]].slice(0, state.level);
+  $("#crumbs").innerHTML = trail.map(([lv, name], i) => i === trail.length - 1
+    ? `<span class="cur">${name}</span>`
+    : `<button data-lv="${lv}">${name}</button><span aria-hidden="true">›</span>`).join("");
+  $("#crumbs").querySelectorAll("button").forEach(b => b.addEventListener("click", () => goLevel(+b.dataset.lv)));
+  tabs.forEach(b => b.setAttribute("aria-selected", +b.dataset.level === state.level));
+  movePill();
+}
+
+/* ===================== Zoom e arraste ===================== */
+const MIN = 0.25, MAX = 2.2;
+function apply() {
+  stage.style.transform = `translate(${state.tx}px, ${state.ty}px) scale(${state.scale})`;
+  $("#zVal").textContent = Math.round(state.scale * 100) + "%";
+}
+function fit(animate) {
+  const [W, H] = LEVELS[state.level].size;
+  const vw = viewport.clientWidth, vh = viewport.clientHeight, pad = 28;
+  state.scale = Math.min((vw - pad * 2) / W, (vh - pad * 2) / H, 1.15);
+  // no celular, abre num zoom legível e centralizado; o resto se vê arrastando
+  if (vw < 640) state.scale = Math.max(state.scale, 0.42);
+  state.tx = (vw - W * state.scale) / 2;
+  state.ty = (vh - H * state.scale) / 2;
+  if (animate) { stage.classList.add("anim"); setTimeout(() => stage.classList.remove("anim"), 480); }
+  apply();
+}
+function zoomAt(factor, px, py, animate) {
+  const ns = Math.min(MAX, Math.max(MIN, state.scale * factor));
+  const k = ns / state.scale;
+  if (px === undefined) { px = viewport.clientWidth / 2; py = viewport.clientHeight / 2; }
+  state.tx = px - (px - state.tx) * k;
+  state.ty = py - (py - state.ty) * k;
+  state.scale = ns;
+  if (animate) { stage.classList.add("anim"); setTimeout(() => stage.classList.remove("anim"), 480); }
+  apply();
+}
+$("#zIn").addEventListener("click", () => zoomAt(1.2, undefined, undefined, true));
+$("#zOut").addEventListener("click", () => zoomAt(1 / 1.2, undefined, undefined, true));
+$("#zFit").addEventListener("click", () => fit(true));
+viewport.addEventListener("wheel", ev => {
+  if (!(ev.ctrlKey || ev.metaKey)) return;
+  ev.preventDefault();
+  const r = viewport.getBoundingClientRect();
+  zoomAt(Math.exp(-ev.deltaY * 0.0022), ev.clientX - r.left, ev.clientY - r.top);
+}, { passive: false });
+
+let dragging = false, moved = false;
+const pointers = new Map();
+let start = null, pinch = null;
+viewport.addEventListener("pointerdown", ev => {
+  if (ev.button !== 0 && ev.pointerType === "mouse") return;
+  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  moved = false;
+  if (pointers.size === 1) {
+    start = { x: ev.clientX, y: ev.clientY, tx: state.tx, ty: state.ty, id: ev.pointerId };
+  } else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const r = viewport.getBoundingClientRect();
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: state.scale, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top };
+  }
+});
+window.addEventListener("pointermove", ev => {
+  if (!pointers.has(ev.pointerId)) return;
+  pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (pointers.size === 2 && pinch) {
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    zoomAt((pinch.s * d / pinch.d) / state.scale, pinch.cx, pinch.cy);
+    moved = true;
+    return;
+  }
+  if (!start || ev.pointerId !== start.id) return;
+  const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+  if (!moved && Math.hypot(dx, dy) < 5) return;
+  if (!moved) { moved = true; dragging = true; viewport.classList.add("grabbing"); clearHl(); }
+  state.tx = start.tx + dx; state.ty = start.ty + dy;
+  apply();
+});
+function endPointer(ev) {
+  pointers.delete(ev.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (pointers.size === 0) {
+    start = null;
+    viewport.classList.remove("grabbing");
+    setTimeout(() => { dragging = false; moved = false; }, 0);
+  }
+}
+window.addEventListener("pointerup", endPointer);
+window.addEventListener("pointercancel", endPointer);
+viewport.addEventListener("click", ev => {
+  if (!moved && !ev.target.closest(".node") && !ev.target.closest(".elabel")) closePanel();
+});
+
+/* ===================== Navegação entre níveis ===================== */
+let busy = false;
+function goLevel(n, fromId) {
+  if (!LEVELS[n] || busy) return;
+  if (n === state.level) { fit(true); return; }
+  busy = true;
+  closePanel(true);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const finish = () => {
+    state.level = n;
+    state.selected = null;
+    render();
+    fit(false);
+    if (!reduce) {
+      const sc = state.scale, tx = state.tx, ty = state.ty;
+      stage.classList.add("pre");
+      const vw = viewport.clientWidth, vh = viewport.clientHeight;
+      state.scale = sc * 0.94; state.tx = tx + vw * 0.03; state.ty = ty + vh * 0.03; apply();
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        stage.classList.add("anim"); stage.classList.remove("pre");
+        state.scale = sc; state.tx = tx; state.ty = ty; apply();
+        setTimeout(() => { stage.classList.remove("anim"); busy = false; }, 480);
+      }));
+    } else busy = false;
+    try { history.replaceState(null, "", "#nivel-" + n); } catch (e) { location.hash = "nivel-" + n; }
+  };
+  if (reduce) { finish(); return; }
+  // "mergulha" no card de origem antes de trocar de nível
+  stage.classList.add("anim", "out");
+  if (fromId && state.nodes[fromId]) {
+    const c = center(state.nodes[fromId].box);
+    const px = state.tx + c[0] * state.scale, py = state.ty + c[1] * state.scale;
+    const k = 1.6;
+    state.tx = viewport.clientWidth / 2 - (px - state.tx) * k;
+    state.ty = viewport.clientHeight / 2 - (py - state.ty) * k;
+    state.scale *= k;
+  } else {
+    zoomAt(n > state.level ? 1.15 : 0.88);
+  }
+  apply();
+  setTimeout(() => { stage.classList.remove("anim", "out"); finish(); }, 340);
+}
+
+/* ===================== Painel de detalhes ===================== */
+function openPanel(id) {
+  const n = state.nodes[id]; if (!n) return;
+  const d = n.d;
+  Object.values(state.nodes).forEach(x => x.el.classList.remove("selected"));
+  n.el.classList.add("selected");
+  state.selected = id;
+  highlightNode(id);
+
+  const badge = $("#pBadge");
+  badge.textContent = d.optional ? "Externo opcional" : TYPE_LABEL[d.type];
+  badge.style.setProperty("--hue", TYPE_HUE[d.type]);
+  $("#pTitle").textContent = d.title;
+  $("#pTech").textContent = "[" + d.tech + "]";
+
+  const conns = state.edges.filter(e => e.f === id || e.t === id).map(e => {
+    const outE = e.f === id, other = state.nodes[outE ? e.t : e.f].d;
+    return `<button data-go="${other.id}"><span class="dir ${outE ? "o" : "i"}">${e.both ? "⇄" : outE ? "→" : "←"}</span>
+      <span><strong>${esc(other.title)}</strong><small>${esc(e.a)} <span class="mono">[${esc(e.p)}]</span></small></span></button>`;
+  }).join("");
+
+  const sec = (title, html) => html ? `<section><h4>${title}</h4>${html}</section>` : "";
+  const list = (arr, cls) => arr && arr.length ? `<ul class="dots ${cls || ""}">${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const evTags = ["EVT", "SSE", "AMQP"];
+  const api = d.api && d.api.length ? `<ul class="api">${d.api.map(([m, p]) => `<li><b class="${evTags.includes(m) ? "ev" : ""}">${esc(m)}</b><span>${esc(p)}</span></li>`).join("")}</ul>` : "";
+  const stack = d.stack && d.stack.length ? `<div class="stack">${d.stack.map(s => `<span>${esc(s)}</span>`).join("")}</div>` : "";
+  const drill = d.drill ? `<button class="drill-btn" data-drill="${d.drill}">${ICON.zoom} Entrar no Nível ${d.drill} · ${LEVELS[d.drill].key}</button>` : "";
+
+  $("#pBody").innerHTML = `<p class="lead">${esc(d.desc)}</p>${drill}`
+    + sec("Responsabilidades", list(d.resp))
+    + sec("Stack tecnológica", stack)
+    + sec("Endpoints e eventos", api)
+    + sec("Regras de negócio", list(d.rules, "rules"))
+    + sec("Conexões", conns ? `<div class="conn">${conns}</div>` : "");
+
+  $("#pBody").querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.go)));
+  const db = $("#pBody").querySelector(".drill-btn");
+  if (db) db.addEventListener("click", () => goLevel(+db.dataset.drill, id));
+  $("#pBody").scrollTop = 0;
+
+  panel.classList.add("open"); panel.setAttribute("aria-hidden", "false");
+  if (window.innerWidth < 900) scrim.classList.add("on");
+}
+function closePanel(silent) {
+  panel.classList.remove("open"); panel.setAttribute("aria-hidden", "true"); scrim.classList.remove("on");
+  if (state.selected && state.nodes[state.selected]) state.nodes[state.selected].el.classList.remove("selected");
+  state.selected = null;
+  if (!silent) clearHl();
+}
+$("#pClose").addEventListener("click", () => closePanel());
+scrim.addEventListener("click", () => closePanel());
+
+/* ===================== Teclado ===================== */
+document.addEventListener("keydown", ev => {
+  if (ev.target.closest && ev.target.closest("input, textarea")) return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  const k = ev.key;
+  if (k === "Escape") closePanel();
+  else if (k === "1" || k === "2" || k === "3") goLevel(+k);
+  else if (k === "+" || k === "=") zoomAt(1.2, undefined, undefined, true);
+  else if (k === "-" || k === "_") zoomAt(1 / 1.2, undefined, undefined, true);
+  else if (k === "0") fit(true);
+  else if (k === "t" || k === "T") toggleTheme();
+});
+
+/* ===================== Início ===================== */
+function levelFromHash() {
+  const m = /^#nivel-([123])$/.exec(location.hash);
+  return m ? +m[1] : 1;
+}
+window.addEventListener("hashchange", () => { const n = levelFromHash(); if (n !== state.level) goLevel(n); });
+let rt;
+window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { movePill(); fit(false); }, 120); });
+
+function boot() {
+  state.level = levelFromHash();
+  render();
+  fit(false);
+}
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(boot);
+  setTimeout(() => { if (!Object.keys(state.nodes).length) boot(); }, 1500);
+} else boot();
+})();
+</script>
+</body>
+</html>
